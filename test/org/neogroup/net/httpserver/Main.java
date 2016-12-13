@@ -1,12 +1,16 @@
 
 package org.neogroup.net.httpserver;
 
+import org.neogroup.net.httpserver.original.HttpExchange;
+import org.neogroup.net.httpserver.original.HttpHandler;
+import org.neogroup.net.httpserver.original.HttpServer;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public class Main {
 
-    public static final String WELCOME_PHRASE = "hello world {0} !!";
+    public static final String WELCOME_PHRASE = "Hi {1}, hello world {0} !!";
 
     public static void main(String[] args) {
 
