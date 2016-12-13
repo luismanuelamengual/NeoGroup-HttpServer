@@ -6,8 +6,7 @@ import java.net.InetSocketAddress;
 
 public class Main {
 
-    public Main() {
-    }
+    public static final String WELCOME_PHRASE = "hello world {0} !!";
 
     public static void main(String[] args) {
 
@@ -17,8 +16,8 @@ public class Main {
                 @Override
                 public void handle(HttpExchange exchange) throws IOException {
 
-                    exchange.sendResponseHeaders(200, 12);
-                    exchange.getResponseBody().write("hola mundaco".getBytes());
+                    exchange.sendResponseHeaders(200, WELCOME_PHRASE.length());
+                    exchange.getResponseBody().write(WELCOME_PHRASE.getBytes());
                 }
             });
             server.setExecutor(null);
