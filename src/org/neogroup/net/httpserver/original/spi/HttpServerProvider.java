@@ -14,7 +14,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 /**
- * Service provider class for HttpServer.
+ * Service provider class for org.neogroup.net.httpserver.HttpServer.
  * Sub-classes of HttpServerProvider provide an implementation of
  * {@link HttpServer} and associated classes. Applications do not normally use
  * this class. See {@link #provider()} for how providers are found and loaded.
@@ -23,7 +23,7 @@ import java.util.ServiceLoader;
 public abstract class HttpServerProvider {
 
     /**
-     * creates a HttpServer from this provider
+     * creates a org.neogroup.net.httpserver.HttpServer from this provider
      *
      * @param  addr
      *         the address to bind to. May be {@code null}

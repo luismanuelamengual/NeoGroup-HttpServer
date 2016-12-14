@@ -13,7 +13,7 @@ import java.net.InetSocketAddress;
  * A HttpsServer must have an associated {@link HttpsConfigurator} object
  * which is used to establish the SSL configuration for the SSL connections.
  * <p>
- * All other configuration is the same as for HttpServer.
+ * All other configuration is the same as for org.neogroup.net.httpserver.HttpServer.
  * @since 1.6
  */
 

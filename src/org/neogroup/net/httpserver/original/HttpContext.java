@@ -7,9 +7,9 @@ import java.util.Map;
 /**
  * HttpContext represents a mapping between the root URI path of an application
  * to a {@link HttpHandler} which is invoked to handle requests destined
- * for that path on the associated HttpServer or HttpsServer.
+ * for that path on the associated org.neogroup.net.httpserver.HttpServer or HttpsServer.
  * <p>
- * HttpContext instances are created by the create methods in HttpServer
+ * HttpContext instances are created by the create methods in org.neogroup.net.httpserver.HttpServer
  * and HttpsServer
  * <p>
  * A chain of {@link Filter} objects can be added to a HttpContext. All exchanges processed by the

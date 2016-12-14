@@ -21,7 +21,7 @@ public abstract class Filter {
     protected Filter () {}
 
     /**
-     * a chain of filters associated with a HttpServer.
+     * a chain of filters associated with a org.neogroup.net.httpserver.HttpServer.
      * Each filter in the chain is given one of these
      * so it can invoke the next filter in the chain
      */

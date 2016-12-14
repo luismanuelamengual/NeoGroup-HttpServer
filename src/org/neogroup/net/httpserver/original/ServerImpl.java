@@ -92,17 +92,17 @@ class ServerImpl implements TimeSource {
         if (timer1Enabled) {
             timer1 = new Timer ("server-timer1", true);
             timer1.schedule (new ServerTimerTask1(),TIMER_MILLIS,TIMER_MILLIS);
-            logger.config ("HttpServer timer1 enabled period in ms:  "+TIMER_MILLIS);
+            logger.config ("org.neogroup.net.httpserver.HttpServer timer1 enabled period in ms:  "+TIMER_MILLIS);
             logger.config ("MAX_REQ_TIME:  "+MAX_REQ_TIME);
             logger.config ("MAX_RSP_TIME:  "+MAX_RSP_TIME);
         }
         events = new LinkedList<Event>();
-        logger.config ("HttpServer created "+protocol+" "+ addr);
+        logger.config ("org.neogroup.net.httpserver.HttpServer created "+protocol+" "+ addr);
     }
 
     public void bind (InetSocketAddress addr, int backlog) throws IOException {
         if (bound) {
-            throw new BindException ("HttpServer already bound");
+            throw new BindException ("org.neogroup.net.httpserver.HttpServer already bound");
         }
         if (addr == null) {
             throw new NullPointerException ("null address");

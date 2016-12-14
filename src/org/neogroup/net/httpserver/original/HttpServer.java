@@ -9,7 +9,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
 
 /**
- * This class implements a simple HTTP server. A HttpServer is bound to an IP address
+ * This class implements a simple HTTP server. A org.neogroup.net.httpserver.HttpServer is bound to an IP address
  * and port number and listens for incoming TCP connections from clients on this address.
  * The sub-class {@link HttpsServer} implements a server which handles HTTPS requests.
  * <p>
@@ -17,7 +17,7 @@ import java.util.concurrent.Executor;
  * in order to process requests. Each such HttpHandler is registered
  * with a root URI path which represents the
  * location of the application or service on this server. The mapping of a handler
- * to a HttpServer is encapsulated by a {@link HttpContext} object. HttpContexts
+ * to a org.neogroup.net.httpserver.HttpServer is encapsulated by a {@link HttpContext} object. HttpContexts
  * are created by calling {@link #createContext(String,HttpHandler)}.
  * Any request for which no handler can be found is rejected with a 404 response.
  * Management of threads can be done external to this object by providing a
@@ -31,7 +31,7 @@ import java.util.concurrent.Executor;
  * whose path is the longest matching prefix of the request URI's path.
  * Paths are matched literally, which means that the strings are compared
  * case sensitively, and with no conversion to or from any encoded forms.
- * For example. Given a HttpServer with the following HttpContexts configured.<p>
+ * For example. Given a org.neogroup.net.httpserver.HttpServer with the following HttpContexts configured.<p>
  * <table >
  * <tr><td><i>Context</i></td><td><i>Context path</i></td></tr>
  * <tr><td>ctx1</td><td>"/"</td></tr>
@@ -53,7 +53,7 @@ import java.util.concurrent.Executor;
  * When binding to an address and port number, the application can also specify an integer
  * <i>backlog</i> parameter. This represents the maximum number of incoming TCP connections
  * which the system will queue internally. Connections are queued while they are waiting to
- * be accepted by the HttpServer. When the limit is reached, further connections may be
+ * be accepted by the org.neogroup.net.httpserver.HttpServer. When the limit is reached, further connections may be
  * rejected (or possibly ignored) by the underlying TCP implementation. Setting the right
  * backlog value is a compromise between efficient resource usage in the TCP layer (not setting
  * it too high) and allowing adequate throughput of incoming requests (not setting it too low).
@@ -67,8 +67,8 @@ public abstract class HttpServer {
     }
 
     /**
-     * creates a HttpServer instance which is initially not bound to any local address/port.
-     * The HttpServer is acquired from the currently installed {@link HttpServerProvider}
+     * creates a org.neogroup.net.httpserver.HttpServer instance which is initially not bound to any local address/port.
+     * The org.neogroup.net.httpserver.HttpServer is acquired from the currently installed {@link HttpServerProvider}
      * The server must be bound using {@link #bind(InetSocketAddress,int)} before it can be used.
      * @throws IOException
      */
@@ -77,13 +77,13 @@ public abstract class HttpServer {
     }
 
     /**
-     * Create a <code>HttpServer</code> instance which will bind to the
+     * Create a <code>org.neogroup.net.httpserver.HttpServer</code> instance which will bind to the
      * specified {@link java.net.InetSocketAddress} (IP address and port number)
      *
      * A maximum backlog can also be specified. This is the maximum number of
      * queued incoming connections to allow on the listening socket.
      * Queued TCP connections exceeding this limit may be rejected by the TCP implementation.
-     * The HttpServer is acquired from the currently installed {@link HttpServerProvider}
+     * The org.neogroup.net.httpserver.HttpServer is acquired from the currently installed {@link HttpServerProvider}
      *
      * @param addr the address to listen on, if <code>null</code> then bind() must be called
      *  to set the address
@@ -102,7 +102,7 @@ public abstract class HttpServer {
     }
 
     /**
-     * Binds a currently unbound HttpServer to the given address and port number.
+     * Binds a currently unbound org.neogroup.net.httpserver.HttpServer to the given address and port number.
      * A maximum backlog can also be specified. This is the maximum number of
      * queued incoming connections to allow on the listening socket.
      * Queued TCP connections exceeding this limit may be rejected by the TCP implementation.
@@ -152,7 +152,7 @@ public abstract class HttpServer {
      * approximately <i>delay</i> seconds have elapsed (whichever happens
      * sooner). Then, all open TCP connections are closed, the background
      * thread created by start() exits, and the method returns.
-     * Once stopped, a HttpServer cannot be re-used. <p>
+     * Once stopped, a org.neogroup.net.httpserver.HttpServer cannot be re-used. <p>
      *
      * @param delay the maximum time in seconds to wait until exchanges have finished.
      * @throws IllegalArgumentException if delay is less than zero.
@@ -161,7 +161,7 @@ public abstract class HttpServer {
 
     /**
      * Creates a HttpContext. A HttpContext represents a mapping from a
-     * URI path to a exchange handler on this HttpServer. Once created, all requests
+     * URI path to a exchange handler on this org.neogroup.net.httpserver.HttpServer. Once created, all requests
      * received by the server for the path will be handled by calling
      * the given handler object. The context is identified by the path, and
      * can later be removed from the server using this with the {@link #removeContext(String)} method.
@@ -181,7 +181,7 @@ public abstract class HttpServer {
     /**
      * Creates a HttpContext without initially specifying a handler. The handler must later be specified using
      * {@link HttpContext#setHandler(HttpHandler)}.  A HttpContext represents a mapping from a
-     * URI path to an exchange handler on this HttpServer. Once created, and when
+     * URI path to an exchange handler on this org.neogroup.net.httpserver.HttpServer. Once created, and when
      * the handler has been set, all requests
      * received by the server for the path will be handled by calling
      * the handler object. The context is identified by the path, and

@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 /**
  * HttpContext represents a mapping between a protocol (http or https) together with a root URI path
  * to a {@link HttpHandler} which is invoked to handle requests destined
- * for the protocol/path on the associated HttpServer.
+ * for the protocol/path on the associated org.neogroup.net.httpserver.HttpServer.
  * <p>
  * HttpContext instances are created by {@link HttpServer#createContext(String,String,HttpHandler,Object)}
  * <p>
