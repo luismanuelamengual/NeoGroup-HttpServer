@@ -2,6 +2,7 @@
 package org.neogroup.net.httpserver;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -16,7 +17,7 @@ public class HttpServer {
     private Selector selector;
     private ServerSocketChannel serverChannel;
     private Executor executor;
-    private Dispatcher dispatcher;
+    private ServerHandler serverHandler;
     private boolean running;
 
     public HttpServer () {
@@ -28,7 +29,7 @@ public class HttpServer {
         try {
             running = false;
             executor = new Executor() { @Override public void execute(Runnable task) { task.run(); } };
-            dispatcher = new Dispatcher();
+            serverHandler = new ServerHandler();
             selector = Selector.open();
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(port));
@@ -48,7 +49,21 @@ public class HttpServer {
         this.executor = executor;
     }
 
-    private class Dispatcher implements Runnable {
+    public void start () {
+
+        Thread dispatcherThread = new Thread (serverHandler);
+        running = true;
+        dispatcherThread.start();
+    }
+
+    public void stop () {
+
+        running = false;
+        try { selector.close(); } catch (Exception ex) {}
+        try { serverChannel.close(); } catch (Exception ex) {}
+    }
+
+    private class ServerHandler implements Runnable {
 
         @Override
         public void run() {
@@ -68,13 +83,12 @@ public class HttpServer {
                             if (key.isAcceptable()) {
                                 SocketChannel clientChannel = serverChannel.accept();
                                 clientChannel.configureBlocking(false);
-                                SelectionKey readKey = clientChannel.register(selector, SelectionKey.OP_READ);
-                                HttpConnection connection = new HttpConnection(clientChannel);
-                                readKey.attach(connection);
+                                clientChannel.register(selector, SelectionKey.OP_READ);
                             }
                             else if (key.isReadable()) {
-                                HttpConnection connection = (HttpConnection) key.attachment();
-                                executor.execute(new Exchange(connection));
+                                SocketChannel channel = (SocketChannel) key.channel();
+                                key.cancel();
+                                executor.execute(new ClientHandler(channel));
                             }
                         }
                         catch (Exception ex) {
@@ -87,17 +101,40 @@ public class HttpServer {
         }
     }
 
-    private class Exchange implements Runnable {
+    private class ClientHandler implements Runnable {
 
-        private HttpConnection connection;
+        private final SocketChannel channel;
 
-        public Exchange(HttpConnection connection) {
-            this.connection = connection;
+        public ClientHandler(SocketChannel channel) {
+            this.channel = channel;
         }
 
         @Override
         public void run() {
 
+            try {
+//                channel.configureBlocking (true);
+
+
+                StringBuilder requestSource = new StringBuilder();
+                ByteBuffer buffer = ByteBuffer.allocate(100);
+                int readSize;
+                while ((readSize = channel.read(buffer)) > 0) {
+                    buffer.flip();
+
+                    String part = new String(buffer.array());
+                    System.out.println ("\n\npart: " + part);
+
+
+                    requestSource.append (part);
+                    buffer.clear();
+                }
+
+                System.out.println(requestSource.toString());
+            }
+            catch (Throwable throwable) {
+                throwable.printStackTrace();
+            }
         }
     }
 }
