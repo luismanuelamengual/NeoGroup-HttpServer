@@ -1,8 +1,105 @@
 
 package org.neogroup.net.httpserver;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+import java.util.concurrent.Executor;
+
 public class HttpServer {
 
+    private static final int DEFAULT_PORT = 80;
+
+    private Selector selector;
+    private ServerSocketChannel serverChannel;
+    private Executor executor;
+    private Dispatcher dispatcher;
+    private boolean running;
+
+    public HttpServer () {
+        this(DEFAULT_PORT);
+    }
+
+    public HttpServer (int port) {
+
+        try {
+            running = false;
+            executor = new Executor() { @Override public void execute(Runnable task) { task.run(); } };
+            dispatcher = new Dispatcher();
+            selector = Selector.open();
+            serverChannel = ServerSocketChannel.open();
+            serverChannel.socket().bind(new InetSocketAddress(port));
+            serverChannel.configureBlocking(false);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+        }
+        catch (Exception ex) {
+            throw new RuntimeException("Error creating HttpServer", ex);
+        }
+    }
+
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    public void setExecutor(Executor executor) {
+        this.executor = executor;
+    }
+
+    private class Dispatcher implements Runnable {
+
+        @Override
+        public void run() {
+
+            while (running) {
+                try {
+                    selector.select(1000);
+                    Iterator<SelectionKey> selectorIterator = selector.selectedKeys().iterator();
+                    while (selectorIterator.hasNext()) {
+                        SelectionKey key = selectorIterator.next();
+                        selectorIterator.remove();
+                        if (!key.isValid()) {
+                            continue;
+                        }
+
+                        try {
+                            if (key.isAcceptable()) {
+                                SocketChannel clientChannel = serverChannel.accept();
+                                clientChannel.configureBlocking(false);
+                                SelectionKey readKey = clientChannel.register(selector, SelectionKey.OP_READ);
+                                HttpConnection connection = new HttpConnection(clientChannel);
+                                readKey.attach(connection);
+                            }
+                            else if (key.isReadable()) {
+                                HttpConnection connection = (HttpConnection) key.attachment();
+                                executor.execute(new Exchange(connection));
+                            }
+                        }
+                        catch (Exception ex) {
+                            System.err.println("Error handling client: " + key.channel());
+                        }
+                    }
+                }
+                catch (Exception ex) {}
+            }
+        }
+    }
+
+    private class Exchange implements Runnable {
+
+        private HttpConnection connection;
+
+        public Exchange(HttpConnection connection) {
+            this.connection = connection;
+        }
+
+        @Override
+        public void run() {
+
+        }
+    }
 }
 
 

@@ -1,7 +1,5 @@
 package org.neogroup.net.httpserver;
 
-import java.util.List;
-
 public class HttpResponse {
 
     private HttpHeaders headers;
