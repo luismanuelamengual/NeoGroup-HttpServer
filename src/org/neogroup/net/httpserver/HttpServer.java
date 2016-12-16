@@ -1,6 +1,8 @@
 
 package org.neogroup.net.httpserver;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -75,24 +77,20 @@ public class HttpServer {
                     while (selectorIterator.hasNext()) {
                         SelectionKey key = selectorIterator.next();
                         selectorIterator.remove();
-                        if (!key.isValid()) {
-                            continue;
-                        }
-
-                        try {
-                            if (key.isAcceptable()) {
-                                SocketChannel clientChannel = serverChannel.accept();
-                                clientChannel.configureBlocking(false);
-                                clientChannel.register(selector, SelectionKey.OP_READ);
+                        if (key.isValid()) {
+                            try {
+                                if (key.isAcceptable()) {
+                                    SocketChannel clientChannel = serverChannel.accept();
+                                    clientChannel.configureBlocking (false);
+                                    clientChannel.register(selector, SelectionKey.OP_READ);
+                                } else if (key.isReadable()) {
+                                    SocketChannel channel = (SocketChannel) key.channel();
+                                    key.cancel();
+                                    executor.execute(new ClientHandler(channel));
+                                }
+                            } catch (Exception ex) {
+                                System.err.println("Error handling client: " + key.channel());
                             }
-                            else if (key.isReadable()) {
-                                SocketChannel channel = (SocketChannel) key.channel();
-                                key.cancel();
-                                executor.execute(new ClientHandler(channel));
-                            }
-                        }
-                        catch (Exception ex) {
-                            System.err.println("Error handling client: " + key.channel());
                         }
                     }
                 }
@@ -112,29 +110,46 @@ public class HttpServer {
         @Override
         public void run() {
 
+            ByteBuffer readBuffer = ByteBuffer.allocate(100);
+            int readSize = 0;
+            int totalReadSize = 0;
+
             try {
-//                channel.configureBlocking (true);
 
+                //Obtención de una petición nueva
+                byte[] readBytes;
+                try (ByteArrayOutputStream readData = new ByteArrayOutputStream()) {
 
-                StringBuilder requestSource = new StringBuilder();
-                ByteBuffer buffer = ByteBuffer.allocate(100);
-                int readSize;
-                while ((readSize = channel.read(buffer)) > 0) {
-                    buffer.flip();
+                    readSize = 0;
+                    totalReadSize = 0;
+                    channel.configureBlocking (true);
+                    readBuffer.rewind();
+                    totalReadSize += readSize = channel.read(readBuffer);
+                    channel.configureBlocking (false);
+                    while (readSize > 0) {
+                        readData.write(readBuffer.array(), 0, readSize);
+                        readData.flush();
+                        readBuffer.rewind();
+                        totalReadSize += readSize = channel.read(readBuffer);
+                    }
 
-                    String part = new String(buffer.array());
-                    System.out.println ("\n\npart: " + part);
+                    if (totalReadSize == -1) {
+                        throw new IOException("Channel socket closed remotely !!");
+                    }
 
-
-                    requestSource.append (part);
-                    buffer.clear();
+                    readBytes = readData.toByteArray();
                 }
 
-                System.out.println(requestSource.toString());
+                if (readBytes != null && readBytes.length > 0) {
+
+                    System.out.println (new String(readBytes));
+                }
             }
             catch (Throwable throwable) {
                 throwable.printStackTrace();
             }
+
+            try { channel.close(); } catch (Exception ex) {}
         }
     }
 }
