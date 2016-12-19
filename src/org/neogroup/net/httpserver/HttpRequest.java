@@ -25,10 +25,15 @@ public class HttpRequest {
     private Map<String,String> parameters;
     private byte[] body;
 
-    public HttpRequest (InputStream inputStream) throws IOException {
+    public HttpRequest (InputStream inputStream) {
         this.inputStream = inputStream;
-        readRequestLine();
-        readHeaders();
+        try {
+            readRequestLine();
+            readHeaders();
+        }
+        catch (Exception ex) {
+            throw new HttpError ("Error reading request headers !!", ex);
+        }
     }
 
     public String getMethod() {
@@ -67,7 +72,12 @@ public class HttpRequest {
 
     public byte[] getBody() {
         if (body == null) {
-            readBody();
+            try {
+                readBody();
+            }
+            catch (Exception ex) {
+                throw new HttpError ("Error reading request body !!", ex);
+            }
         }
         return body;
     }
@@ -239,18 +249,15 @@ public class HttpRequest {
         }
     }
 
-    private void readBody ()  {
-        try {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private void readBody () throws IOException {
+
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
             int read = inputStream.read();
             while (read != -1) {
                 byteArrayOutputStream.write(read);
                 read = inputStream.read();
             }
             body = byteArrayOutputStream.toByteArray();
-        }
-        catch (Exception ex) {
-            throw new RuntimeException("Error reading request body !!");
         }
     }
 
@@ -274,7 +281,7 @@ public class HttpRequest {
             }
         }
         catch (Exception ex) {
-            throw new RuntimeException("Error reading request parameters !!");
+            throw new HttpError("Error reading request parameters !!", ex);
         }
     }
 }

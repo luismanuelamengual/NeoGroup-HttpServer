@@ -117,7 +117,7 @@ public class HttpServer {
                 System.out.println (request.getMethod());
                 System.out.println (request.getUri());
                 System.out.println (request.getVersion());
-                System.out.println (request.getHeaders().get("User-Agent"));
+                System.out.println (request.getHeader("User-Agent"));
                 System.out.println (request.getParameter("name"));
             }
             catch (Throwable ex) {
