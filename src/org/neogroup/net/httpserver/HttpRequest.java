@@ -5,10 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLDecoder;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class HttpRequest {
 
@@ -24,9 +21,9 @@ public class HttpRequest {
     private String method;
     private URI uri;
     private String version;
-    private HttpHeaders headers;
-    private byte[] body;
+    private Map<String, String> headers;
     private Map<String,String> parameters;
+    private byte[] body;
 
     public HttpRequest (InputStream inputStream) throws IOException {
         this.inputStream = inputStream;
@@ -60,8 +57,8 @@ public class HttpRequest {
         return version;
     }
 
-    public HttpHeaders getHeaders() {
-        return headers;
+    public Map<String, String> getHeaders() {
+        return Collections.unmodifiableMap(headers);
     }
 
     public String getHeader (String headerName) {
@@ -80,8 +77,8 @@ public class HttpRequest {
         if (parameters == null) {
             parameters = new HashMap<>();
             readParametersFromQuery(getQuery());
-            String requestContentType = getHeader(HttpHeaders.CONTENT_TYPE);
-            if (requestContentType != null && requestContentType.equals(HttpHeaders.APPLICATION_FORM_URL_ENCODED)) {
+            String requestContentType = getHeader(HttpHeader.CONTENT_TYPE);
+            if (requestContentType != null && requestContentType.equals(HttpHeader.APPLICATION_FORM_URL_ENCODED)) {
                 readParametersFromQuery(new String(getBody()));
             }
         }
@@ -162,7 +159,7 @@ public class HttpRequest {
 
     private void readHeaders () throws IOException {
 
-        headers = new HttpHeaders();
+        headers = new HashMap<>();
 
         char s[] = new char[10];
         int len = 0;

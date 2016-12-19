@@ -1,10 +1,7 @@
 
 package org.neogroup.net.httpserver;
 
-import java.util.HashMap;
-import java.util.Map;
-
-public final class HttpHeaders {
+public interface HttpHeader {
 
     public static final String ACCEPT = "Accept";
     public static final String ACCEPT_CHARSET = "Accept-Charset";
@@ -41,18 +38,4 @@ public final class HttpHeaders {
     //Header Values
     public static final String GZIP_CONTENT_ENCODING = "gzip";
     public static final String APPLICATION_FORM_URL_ENCODED = "application/x-www-form-urlencoded";
-
-    private final Map<String, String> headers;
-
-    public HttpHeaders () {
-        headers = new HashMap<>();
-    }
-
-    public void put (String name, String value) {
-        headers.put(name, value);
-    }
-
-    public String get (String name) {
-        return headers.get(name);
-    }
 }

@@ -2,15 +2,15 @@ package org.neogroup.net.httpserver;
 
 public class HttpResponse {
 
-    private HttpHeaders headers;
+    private HttpHeader headers;
     private int responseCode;
     private byte[] body;
 
-    public HttpHeaders getHeaders() {
+    public HttpHeader getHeaders() {
         return headers;
     }
 
-    public void setHeaders(HttpHeaders headers) {
+    public void setHeaders(HttpHeader headers) {
         this.headers = headers;
     }
 
