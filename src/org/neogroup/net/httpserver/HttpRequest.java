@@ -12,65 +12,79 @@ public class HttpRequest {
 
     private final InputStream inputStream;
     private String method;
-    private HttpHeaders headers;
     private URI uri;
+    private String version;
+    private HttpHeaders headers;
     private byte[] body;
 
-    public HttpRequest (InputStream inputStream) {
+    public HttpRequest (InputStream inputStream) throws IOException {
         this.inputStream = inputStream;
+        readRequestLine();
+        readHeaders();
     }
 
-    private void readHeading () throws IOException {
-        String startLine = null;
+    private void readRequestLine () throws IOException {
+
+        String requestLine = null;
         do {
-            startLine = readLine();
-            if (startLine == null) {
-                return;
-            }
-        } while (startLine == null ? false : startLine.equals (""));
-    }
-
-    private String readLine () throws IOException {
-
-        char[] buf = new char [BUF_LEN];
-        boolean gotCR = false, gotLF = false;
-        int pos = 0;
-        StringBuffer lineBuf = new StringBuffer();
-        while (!gotLF) {
-            int c = inputStream.read();
-            if (c == -1) {
-                return null;
-            }
-            if (gotCR) {
-                if (c == LF) {
-                    gotLF = true;
-                } else {
-                    gotCR = false;
-                    if (pos == BUF_LEN) {
-                        lineBuf.append (buf);
-                        pos = 0;
-                    }
-                    buf[pos++] = CR;
-                    if (pos == BUF_LEN) {
-                        lineBuf.append (buf);
-                        pos = 0;
-                    }
-                    buf[pos++] = (char)c;
+            char[] buf = new char [BUF_LEN];
+            boolean gotCR = false, gotLF = false;
+            int pos = 0;
+            StringBuffer lineBuf = new StringBuffer();
+            while (!gotLF) {
+                int c = inputStream.read();
+                if (c == -1) {
+                    throw new IOException("Socket closed remotely !!");
                 }
-            } else {
-                if (c == CR) {
-                    gotCR = true;
-                } else {
-                    if (pos == BUF_LEN) {
-                        lineBuf.append (buf);
-                        pos = 0;
+                if (gotCR) {
+                    if (c == LF) {
+                        gotLF = true;
+                    } else {
+                        gotCR = false;
+                        if (pos == BUF_LEN) {
+                            lineBuf.append (buf);
+                            pos = 0;
+                        }
+                        buf[pos++] = CR;
+                        if (pos == BUF_LEN) {
+                            lineBuf.append (buf);
+                            pos = 0;
+                        }
+                        buf[pos++] = (char)c;
                     }
-                    buf[pos++] = (char)c;
+                } else {
+                    if (c == CR) {
+                        gotCR = true;
+                    } else {
+                        if (pos == BUF_LEN) {
+                            lineBuf.append (buf);
+                            pos = 0;
+                        }
+                        buf[pos++] = (char)c;
+                    }
                 }
             }
+            lineBuf.append (buf, 0, pos);
+            requestLine = lineBuf.toString();
+        } while (requestLine.isEmpty());
+
+        if (requestLine == null) {
+            throw new IOException("Bad request line !!");
         }
-        lineBuf.append (buf, 0, pos);
-        return new String (lineBuf);
+        int space = requestLine.indexOf (' ');
+        if (space == -1) {
+            throw new IOException("Bad request line !!");
+        }
+        method = requestLine.substring (0, space);
+        int start = space+1;
+        space = requestLine.indexOf(' ', start);
+        if (space == -1) {
+            throw new IOException("Bad request line !!");
+        }
+        String uriStr = requestLine.substring (start, space);
+        try { uri = new URI (uriStr); } catch (Exception ex) {}
+        start = space+1;
+        version = requestLine.substring (start);
     }
 
     private void readHeaders () throws IOException {
@@ -159,31 +173,23 @@ public class HttpRequest {
         return method;
     }
 
-    public void setMethod(String method) {
-        this.method = method;
+    public URI getUri() {
+        return uri;
+    }
+
+    public String getVersion() {
+        return version;
     }
 
     public HttpHeaders getHeaders() {
         return headers;
     }
 
-    public void setHeaders(HttpHeaders headers) {
-        this.headers = headers;
-    }
-
-    public URI getUri() {
-        return uri;
-    }
-
-    public void setUri(URI uri) {
-        this.uri = uri;
+    public String getHeaader (String headerName) {
+        return headers.get(headerName);
     }
 
     public byte[] getBody() {
         return body;
-    }
-
-    public void setBody(byte[] body) {
-        this.body = body;
     }
 }

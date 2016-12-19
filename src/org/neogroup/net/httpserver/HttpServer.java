@@ -109,8 +109,19 @@ public class HttpServer {
         @Override
         public void run() {
 
-            InputStream inputStream = new BufferedInputStream(new HttpInputStream(channel));
-            HttpRequest request = new HttpRequest(inputStream);
+            try {
+                InputStream inputStream = new BufferedInputStream(new HttpInputStream(channel));
+                HttpRequest request = new HttpRequest(inputStream);
+
+                System.out.println ("=================");
+                System.out.println (request.getMethod());
+                System.out.println (request.getUri());
+                System.out.println (request.getVersion());
+                System.out.println (request.getHeaders().get("User-Agent"));
+            }
+            catch (Throwable ex) {
+                ex.printStackTrace();
+            }
 
             try { channel.close(); } catch (Exception ex) {}
         }
