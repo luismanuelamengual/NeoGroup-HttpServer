@@ -1,11 +1,21 @@
 package org.neogroup.net.httpserver;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class HttpRequest {
 
+    private static final String QUERY_PARAMETERS_REGEX = "[&]";
+    private static final String QUERY_PARAMETER_VALUES_REGEX = "[=]";
+    private static final String FILE_ENCODING_SYSTEM_PROPERTY_NAME = "file.encoding";
+    private static final String URI_SEPARATOR = "/";
     private final static int BUF_LEN = 2048;
     private final static byte CR = 13;
     private final static byte LF = 10;
@@ -16,11 +26,74 @@ public class HttpRequest {
     private String version;
     private HttpHeaders headers;
     private byte[] body;
+    private Map<String,String> parameters;
 
     public HttpRequest (InputStream inputStream) throws IOException {
         this.inputStream = inputStream;
         readRequestLine();
         readHeaders();
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public URI getUri() {
+        return uri;
+    }
+
+    public String getQuery() {
+        return uri.getRawQuery();
+    }
+
+    public String getPath() {
+        return uri.getRawPath();
+    }
+
+    public List<String> getPathParts() {
+        String path = getPath();
+        String[] pathTokens = path.split(URI_SEPARATOR);
+        return Arrays.asList(pathTokens);
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public HttpHeaders getHeaders() {
+        return headers;
+    }
+
+    public String getHeader (String headerName) {
+        return headers.get(headerName);
+    }
+
+    public byte[] getBody() {
+        if (body == null) {
+            readBody();
+        }
+        return body;
+    }
+
+    public Map<String,String> getParameters() {
+
+        if (parameters == null) {
+            parameters = new HashMap<>();
+            readParametersFromQuery(getQuery());
+            String requestContentType = getHeader(HttpHeaders.CONTENT_TYPE);
+            if (requestContentType != null && requestContentType.equals(HttpHeaders.APPLICATION_FORM_URL_ENCODED)) {
+                readParametersFromQuery(new String(getBody()));
+            }
+        }
+        return parameters;
+    }
+
+    public String getParameter (String name) {
+        return getParameters().get(name);
+    }
+
+    public boolean hasParameter (String name) {
+        return getParameters().containsKey(name);
     }
 
     private void readRequestLine () throws IOException {
@@ -169,27 +242,42 @@ public class HttpRequest {
         }
     }
 
-    public String getMethod() {
-        return method;
+    private void readBody ()  {
+        try {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            int read = inputStream.read();
+            while (read != -1) {
+                byteArrayOutputStream.write(read);
+                read = inputStream.read();
+            }
+            body = byteArrayOutputStream.toByteArray();
+        }
+        catch (Exception ex) {
+            throw new RuntimeException("Error reading request body !!");
+        }
     }
 
-    public URI getUri() {
-        return uri;
-    }
+    private void readParametersFromQuery(String query) {
 
-    public String getVersion() {
-        return version;
-    }
-
-    public HttpHeaders getHeaders() {
-        return headers;
-    }
-
-    public String getHeaader (String headerName) {
-        return headers.get(headerName);
-    }
-
-    public byte[] getBody() {
-        return body;
+        try {
+            if (query != null) {
+                String pairs[] = query.split(QUERY_PARAMETERS_REGEX);
+                for (String pair : pairs) {
+                    String param[] = pair.split(QUERY_PARAMETER_VALUES_REGEX);
+                    String key = null;
+                    String value = null;
+                    if (param.length > 0) {
+                        key = URLDecoder.decode(param[0], System.getProperty(FILE_ENCODING_SYSTEM_PROPERTY_NAME));
+                    }
+                    if (param.length > 1) {
+                        value = URLDecoder.decode(param[1], System.getProperty(FILE_ENCODING_SYSTEM_PROPERTY_NAME));
+                    }
+                    parameters.put(key, value);
+                }
+            }
+        }
+        catch (Exception ex) {
+            throw new RuntimeException("Error reading request parameters !!");
+        }
     }
 }
