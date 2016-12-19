@@ -1,10 +1,9 @@
 
 package org.neogroup.net.httpserver;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -110,44 +109,8 @@ public class HttpServer {
         @Override
         public void run() {
 
-            ByteBuffer readBuffer = ByteBuffer.allocate(100);
-            int readSize = 0;
-            int totalReadSize = 0;
-
-            try {
-
-                //Obtención de una petición nueva
-                byte[] readBytes;
-                try (ByteArrayOutputStream readData = new ByteArrayOutputStream()) {
-
-                    readSize = 0;
-                    totalReadSize = 0;
-                    channel.configureBlocking (true);
-                    readBuffer.rewind();
-                    totalReadSize += readSize = channel.read(readBuffer);
-                    channel.configureBlocking (false);
-                    while (readSize > 0) {
-                        readData.write(readBuffer.array(), 0, readSize);
-                        readData.flush();
-                        readBuffer.rewind();
-                        totalReadSize += readSize = channel.read(readBuffer);
-                    }
-
-                    if (totalReadSize == -1) {
-                        throw new IOException("Channel socket closed remotely !!");
-                    }
-
-                    readBytes = readData.toByteArray();
-                }
-
-                if (readBytes != null && readBytes.length > 0) {
-
-                    System.out.println (new String(readBytes));
-                }
-            }
-            catch (Throwable throwable) {
-                throwable.printStackTrace();
-            }
+            InputStream inputStream = new BufferedInputStream(new HttpInputStream(channel));
+            HttpRequest request = new HttpRequest(inputStream);
 
             try { channel.close(); } catch (Exception ex) {}
         }
