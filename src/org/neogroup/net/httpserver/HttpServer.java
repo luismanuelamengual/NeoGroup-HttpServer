@@ -1,6 +1,9 @@
 
 package org.neogroup.net.httpserver;
 
+import org.neogroup.utils.MimeTypes;
+
+import javax.activation.MimeType;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -83,11 +86,12 @@ public class HttpServer {
                                 if (key.isAcceptable()) {
                                     SocketChannel clientChannel = serverChannel.accept();
                                     clientChannel.configureBlocking (false);
-                                    clientChannel.register(selector, SelectionKey.OP_READ);
+                                    SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
+                                    clientReadKey.attach(new HttpConnection(clientChannel));
                                 } else if (key.isReadable()) {
-                                    SocketChannel channel = (SocketChannel) key.channel();
+                                    HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
-                                    executor.execute(new ClientHandler(channel));
+                                    executor.execute(new ClientHandler(connection));
                                 }
                             } catch (Exception ex) {
                                 System.err.println("Error handling client: " + key.channel());
@@ -102,24 +106,18 @@ public class HttpServer {
 
     private class ClientHandler implements Runnable {
 
-        private final SocketChannel channel;
+        private final HttpConnection connection;
 
-        public ClientHandler(SocketChannel channel) {
-            this.channel = channel;
+        public ClientHandler(HttpConnection connection) {
+            this.connection = connection;
         }
 
         @Override
         public void run() {
 
-            InputStream inputStream = null;
-            OutputStream outputStream = null;
-
             try {
-                inputStream = new HttpInputStream(channel);
-                outputStream = new HttpOutputStream(channel);
-
-                HttpRequest request = new HttpRequest(inputStream);
-                HttpResponse response = new HttpResponse(outputStream);
+                HttpRequest request = new HttpRequest(connection.getInputStream());
+                HttpResponse response = new HttpResponse(connection.getOutputStream());
 
                 System.out.println ("=================");
                 System.out.println (request.getMethod());
@@ -128,9 +126,8 @@ public class HttpServer {
                 System.out.println (request.getHeader("User-Agent"));
                 System.out.println (request.getParameter("name"));
 
-
+                //response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
                 response.write("hola mundelich");
-
                 response.send();
             }
             catch (Throwable ex) {
@@ -138,9 +135,7 @@ public class HttpServer {
             }
 
             //Cerrar la conexión con el canal
-            try { inputStream.close(); } catch (Exception ex) {}
-            try { outputStream.close(); } catch (Exception ex) {}
-            try { channel.close(); } catch (Exception ex) {}
+            //connection.close();
         }
     }
 }
