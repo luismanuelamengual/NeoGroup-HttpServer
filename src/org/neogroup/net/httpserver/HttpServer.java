@@ -127,6 +127,11 @@ public class HttpServer {
                 System.out.println (request.getVersion());
                 System.out.println (request.getHeader("User-Agent"));
                 System.out.println (request.getParameter("name"));
+
+
+                response.write("hola mundelich");
+
+                response.send();
             }
             catch (Throwable ex) {
                 ex.printStackTrace();

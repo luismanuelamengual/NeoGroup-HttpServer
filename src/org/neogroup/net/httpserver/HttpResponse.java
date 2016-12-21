@@ -1,8 +1,11 @@
 package org.neogroup.net.httpserver;
 
+import org.neogroup.utils.MimeTypes;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -10,6 +13,9 @@ import java.util.Map;
 
 public class HttpResponse {
 
+    private final static String STATUS_LINE_TEMPLATE = "HTTP/1.1 {0} {1}\r\n";
+    private final static String HEADER_LINE_TEMPLATE = "{0}: {1}\r\n";
+    private final static String SEPARATOR = "\r\n";
     private final static int MAX_BUFFER_SIZE = 8 * 1024;
 
     private final OutputStream outputStream;
@@ -22,6 +28,7 @@ public class HttpResponse {
         this.outputStream = outputStream;
         this.responseCode = HttpResponseCode.HTTP_OK;
         this.headers = new HashMap<>();
+        this.body = new ByteArrayOutputStream();
     }
 
     public int getResponseCode() {
@@ -46,6 +53,10 @@ public class HttpResponse {
 
     public void removeHeader (String headerName) {
         headers.remove(headerName);
+    }
+
+    public boolean hasHeader (String headerName) {
+        return headers.containsKey(headerName);
     }
 
     public void clearHeaders () {
@@ -74,28 +85,48 @@ public class HttpResponse {
     }
 
     public void flush () {
-        sendHeaders(0);
         writeContents();
     }
 
-    private void sendHeaders () {
-        sendHeaders(body.size() > 0? body.size() : -1);
+    public void send () {
+        flush();
+        try { this.body.close(); } catch (Exception ex) {}
     }
 
-    private void sendHeaders (long contentLength) {
+    private void sendHeaders () {
         if (!headersSent) {
-            /*if (!getHeaders().containsKey(HttpHeader.CONTENT_TYPE)) {
+            if (!hasHeader(HttpHeader.CONTENT_TYPE)) {
                 addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
-            }*/
+            }
+            if (!hasHeader(HttpHeader.CONTENT_LENGTH)) {
+                addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(body.size()));
+            }
             addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
             addHeader(HttpHeader.SERVER, HttpServer.SERVER_NAME);
 
-            //TODO: Escribir las cabeceras y el Content-Length
+            try {
+                //Writing status line
+                outputStream.write(MessageFormat.format(STATUS_LINE_TEMPLATE, responseCode, HttpResponseCode.msg(responseCode)).getBytes());
+
+                //Writing headers
+                for (String headerName : headers.keySet()) {
+                    String headerValue = headers.get(headerName);
+                    outputStream.write(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
+                }
+
+                //Writing separator
+                outputStream.write(SEPARATOR.getBytes());
+            }
+            catch (Throwable ex) {
+                throw new HttpError("Error writing headers !!", ex);
+            }
+
             headersSent = true;
         }
     }
 
     private void writeContents () {
+        sendHeaders();
         try { body.writeTo(outputStream); } catch (IOException ex) {}
         try { outputStream.flush(); } catch (Exception ex) {}
         body.reset();
