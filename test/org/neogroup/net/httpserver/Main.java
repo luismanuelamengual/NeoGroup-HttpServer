@@ -6,6 +6,7 @@ import org.neogroup.net.sunserver.HttpHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 public class Main {
 
@@ -31,6 +32,7 @@ public class Main {
         }
 
         HttpServer server = new HttpServer(1408);
+        server.setExecutor(Executors.newCachedThreadPool());
         server.start();
     }
 }

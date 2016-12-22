@@ -38,4 +38,6 @@ public interface HttpHeader {
     //Header Values
     public static final String GZIP_CONTENT_ENCODING = "gzip";
     public static final String APPLICATION_FORM_URL_ENCODED = "application/x-www-form-urlencoded";
+    public static final String KEEP_ALIVE = "keep-alive";
+    public static final String CLOSE = "close";
 }

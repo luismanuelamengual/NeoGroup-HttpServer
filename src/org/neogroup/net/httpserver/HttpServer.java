@@ -1,16 +1,12 @@
 
 package org.neogroup.net.httpserver;
 
-import org.neogroup.utils.MimeTypes;
-
-import javax.activation.MimeType;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.concurrent.Executor;
 
@@ -26,23 +22,27 @@ public class HttpServer {
     private ServerHandler serverHandler;
     private boolean running;
 
-    public HttpServer () {
+    public HttpServer() {
         this(DEFAULT_PORT);
     }
 
-    public HttpServer (int port) {
+    public HttpServer(int port) {
 
         try {
             running = false;
-            executor = new Executor() { @Override public void execute(Runnable task) { task.run(); } };
+            executor = new Executor() {
+                @Override
+                public void execute(Runnable task) {
+                    task.run();
+                }
+            };
             serverHandler = new ServerHandler();
             selector = Selector.open();
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             throw new RuntimeException("Error creating HttpServer", ex);
         }
     }
@@ -55,18 +55,24 @@ public class HttpServer {
         this.executor = executor;
     }
 
-    public void start () {
+    public void start() {
 
-        Thread dispatcherThread = new Thread (serverHandler);
+        Thread dispatcherThread = new Thread(serverHandler);
         running = true;
         dispatcherThread.start();
     }
 
-    public void stop () {
+    public void stop() {
 
         running = false;
-        try { selector.close(); } catch (Exception ex) {}
-        try { serverChannel.close(); } catch (Exception ex) {}
+        try {
+            selector.close();
+        } catch (Exception ex) {
+        }
+        try {
+            serverChannel.close();
+        } catch (Exception ex) {
+        }
     }
 
     private class ServerHandler implements Runnable {
@@ -84,11 +90,13 @@ public class HttpServer {
                         if (key.isValid()) {
                             try {
                                 if (key.isAcceptable()) {
+                                    System.out.println("ACCEPT !!");
                                     SocketChannel clientChannel = serverChannel.accept();
-                                    clientChannel.configureBlocking (false);
+                                    clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(new HttpConnection(clientChannel));
                                 } else if (key.isReadable()) {
+                                    System.out.println("READ !!");
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
                                     executor.execute(new ClientHandler(connection));
@@ -98,8 +106,8 @@ public class HttpServer {
                             }
                         }
                     }
+                } catch (Exception ex) {
                 }
-                catch (Exception ex) {}
             }
         }
     }
@@ -115,27 +123,35 @@ public class HttpServer {
         @Override
         public void run() {
 
+            boolean closeConnection = true;
+
             try {
                 HttpRequest request = new HttpRequest(connection.getInputStream());
                 HttpResponse response = new HttpResponse(connection.getOutputStream());
 
-                System.out.println ("=================");
-                System.out.println (request.getMethod());
-                System.out.println (request.getUri());
-                System.out.println (request.getVersion());
-                System.out.println (request.getHeader("User-Agent"));
-                System.out.println (request.getParameter("name"));
+                //Cabeceras
+                response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
+                response.addHeader(HttpHeader.SERVER, SERVER_NAME);
+                String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
+                if (connectionHeader == null || connectionHeader.equals(HttpHeader.CLOSE)) {
+                    response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
+                } else {
+                    response.addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
+                    closeConnection = false;
+                }
 
-                //response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
                 response.write("hola mundelich");
+
                 response.send();
-            }
-            catch (Throwable ex) {
+            } catch (Throwable ex) {
                 ex.printStackTrace();
+                closeConnection = true;
             }
 
-            //Cerrar la conexión con el canal
-            //connection.close();
+            //Cerrar la conexión
+            if (closeConnection) {
+                connection.close();
+            }
         }
     }
 }

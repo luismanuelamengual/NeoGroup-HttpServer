@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.text.MessageFormat;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -101,9 +100,6 @@ public class HttpResponse {
             if (!hasHeader(HttpHeader.CONTENT_LENGTH)) {
                 addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(body.size()));
             }
-            addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
-            addHeader(HttpHeader.SERVER, HttpServer.SERVER_NAME);
-
             try {
                 //Writing status line
                 outputStream.write(MessageFormat.format(STATUS_LINE_TEMPLATE, responseCode, HttpResponseCode.msg(responseCode)).getBytes());
