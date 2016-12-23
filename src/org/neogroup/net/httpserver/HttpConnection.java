@@ -31,17 +31,26 @@ public class HttpConnection {
         return outputStream;
     }
 
-    public synchronized void close () {
+    public synchronized void close() {
         if (!closed) {
             if (inputStream != null) {
-                try { inputStream.close(); } catch (Exception ex) {}
+                try {
+                    inputStream.close();
+                } catch (Exception ex) {
+                }
                 inputStream = null;
             }
             if (outputStream != null) {
-                try { outputStream.close(); } catch (Exception ex) {}
+                try {
+                    outputStream.close();
+                } catch (Exception ex) {
+                }
                 outputStream = null;
             }
-            try { channel.close(); } catch (Exception ex) {}
+            try {
+                channel.close();
+            } catch (Exception ex) {
+            }
             closed = true;
         }
     }

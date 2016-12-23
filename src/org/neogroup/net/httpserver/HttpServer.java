@@ -21,6 +21,7 @@ public class HttpServer {
     private Executor executor;
     private ServerHandler serverHandler;
     private boolean running;
+    private Object registeringSync = new Object();
 
     public HttpServer() {
         this(DEFAULT_PORT);
@@ -82,6 +83,11 @@ public class HttpServer {
 
             while (running) {
                 try {
+
+                    synchronized (registeringSync) {
+
+                    }
+
                     selector.select(1000);
                     Iterator<SelectionKey> selectorIterator = selector.selectedKeys().iterator();
                     while (selectorIterator.hasNext()) {
@@ -123,6 +129,8 @@ public class HttpServer {
         @Override
         public void run() {
 
+            System.out.println ("INIT THREAD !!");
+
             boolean closeConnection = true;
 
             try {
@@ -142,7 +150,7 @@ public class HttpServer {
                     closeConnection = false;
                 }
 
-                response.write("hola mundelich");
+                response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head></html>");
                 response.sendResponse();
 
             } catch (Throwable ex) {
@@ -154,6 +162,17 @@ public class HttpServer {
             if (closeConnection) {
                 connection.close();
             }
+            else {
+                synchronized (registeringSync) {
+                    selector.wakeup();
+                    try {
+                        SelectionKey key = connection.getChannel().register(selector, SelectionKey.OP_READ);
+                        key.attach(connection);
+                    } catch (Throwable ex) {}
+                }
+            }
+
+            System.out.println ("END THREAD !!");
         }
     }
 }
