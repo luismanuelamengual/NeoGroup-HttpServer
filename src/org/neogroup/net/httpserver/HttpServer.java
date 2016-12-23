@@ -126,10 +126,12 @@ public class HttpServer {
             boolean closeConnection = true;
 
             try {
+                //Creación de la peticion HTTP
                 HttpRequest request = new HttpRequest(connection.getInputStream());
-                HttpResponse response = new HttpResponse(connection.getOutputStream());
+                request.readRequest();
 
-                //Cabeceras
+                //Creación de la respuesta HTTP
+                HttpResponse response = new HttpResponse(connection.getOutputStream());
                 response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                 response.addHeader(HttpHeader.SERVER, SERVER_NAME);
                 String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
@@ -141,8 +143,8 @@ public class HttpServer {
                 }
 
                 response.write("hola mundelich");
+                response.sendResponse();
 
-                response.send();
             } catch (Throwable ex) {
                 ex.printStackTrace();
                 closeConnection = true;

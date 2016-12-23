@@ -13,7 +13,7 @@ public class HttpRequest {
     private static final String QUERY_PARAMETER_VALUES_REGEX = "[=]";
     private static final String FILE_ENCODING_SYSTEM_PROPERTY_NAME = "file.encoding";
     private static final String URI_SEPARATOR = "/";
-    private final static int BUF_LEN = 2048;
+    private final static int READ_BUFFER_SIZE = 2048;
     private final static byte CR = 13;
     private final static byte LF = 10;
 
@@ -27,8 +27,11 @@ public class HttpRequest {
 
     public HttpRequest (InputStream inputStream) {
         this.inputStream = inputStream;
+    }
+
+    public void readRequest () {
         try {
-            readRequestLine();
+            readStatusLine();
             readHeaders();
         }
         catch (Exception ex) {
@@ -103,11 +106,11 @@ public class HttpRequest {
         return getParameters().containsKey(name);
     }
 
-    private void readRequestLine () throws IOException {
+    private void readStatusLine() throws IOException {
 
         String requestLine = null;
         do {
-            char[] buf = new char [BUF_LEN];
+            char[] buf = new char [READ_BUFFER_SIZE];
             boolean gotCR = false, gotLF = false;
             int pos = 0;
             StringBuffer lineBuf = new StringBuffer();
@@ -121,12 +124,12 @@ public class HttpRequest {
                         gotLF = true;
                     } else {
                         gotCR = false;
-                        if (pos == BUF_LEN) {
+                        if (pos == READ_BUFFER_SIZE) {
                             lineBuf.append (buf);
                             pos = 0;
                         }
                         buf[pos++] = CR;
-                        if (pos == BUF_LEN) {
+                        if (pos == READ_BUFFER_SIZE) {
                             lineBuf.append (buf);
                             pos = 0;
                         }
@@ -136,7 +139,7 @@ public class HttpRequest {
                     if (c == CR) {
                         gotCR = true;
                     } else {
-                        if (pos == BUF_LEN) {
+                        if (pos == READ_BUFFER_SIZE) {
                             lineBuf.append (buf);
                             pos = 0;
                         }

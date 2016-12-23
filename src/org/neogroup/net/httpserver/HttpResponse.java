@@ -87,7 +87,7 @@ public class HttpResponse {
         writeContents();
     }
 
-    public void send () {
+    public void sendResponse () {
         flush();
         try { this.body.close(); } catch (Exception ex) {}
     }
