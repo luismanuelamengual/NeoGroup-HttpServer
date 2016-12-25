@@ -6,8 +6,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Date;
-import java.util.Iterator;
+import java.util.*;
 import java.util.concurrent.Executor;
 
 public class HttpServer {
@@ -21,7 +20,8 @@ public class HttpServer {
     private Executor executor;
     private ServerHandler serverHandler;
     private boolean running;
-    private Object registeringSync = new Object();
+    private Set<HttpConnection> readyConnections;
+    private Set<HttpConnection> idleConnections;
 
     public HttpServer() {
         this(DEFAULT_PORT);
@@ -43,6 +43,8 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+            readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
         } catch (Exception ex) {
             throw new RuntimeException("Error creating HttpServer", ex);
         }
@@ -84,8 +86,15 @@ public class HttpServer {
             while (running) {
                 try {
 
-                    synchronized (registeringSync) {
-
+                    synchronized (readyConnections) {
+                        readyConnections.forEach(connection -> {
+                            try {
+                                SelectionKey clientReadKey = connection.getChannel().register(selector, SelectionKey.OP_READ);
+                                clientReadKey.attach(connection);
+                            }
+                            catch (Exception ex) {}
+                        });
+                        readyConnections.clear();
                     }
 
                     selector.select(1000);
@@ -96,14 +105,15 @@ public class HttpServer {
                         if (key.isValid()) {
                             try {
                                 if (key.isAcceptable()) {
-                                    System.out.println("ACCEPT !!");
                                     SocketChannel clientChannel = serverChannel.accept();
+                                    HttpConnection connection = new HttpConnection(clientChannel);
+                                    System.out.println("ACCEPT !! " + connection.toString());
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
-                                    clientReadKey.attach(new HttpConnection(clientChannel));
+                                    clientReadKey.attach(connection);
                                 } else if (key.isReadable()) {
-                                    System.out.println("READ !!");
                                     HttpConnection connection = (HttpConnection) key.attachment();
+                                    System.out.println("READ !! " + connection.toString());
                                     key.cancel();
                                     executor.execute(new ClientHandler(connection));
                                 }
@@ -129,25 +139,29 @@ public class HttpServer {
         @Override
         public void run() {
 
-            System.out.println ("INIT THREAD !!");
+            System.out.println ("INIT THREAD !! " + connection.toString());
 
             boolean closeConnection = true;
+
+            idleConnections.remove(connection);
 
             try {
                 //Creación de la peticion HTTP
                 HttpRequest request = new HttpRequest(connection.getInputStream());
                 request.readRequest();
 
+                System.out.println ("PROCESSING [" + request.getPath() + "] !! " + connection.toString());
+
                 //Creación de la respuesta HTTP
                 HttpResponse response = new HttpResponse(connection.getOutputStream());
                 response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                 response.addHeader(HttpHeader.SERVER, SERVER_NAME);
                 String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
-                if (connectionHeader == null || connectionHeader.equals(HttpHeader.CLOSE)) {
-                    response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
-                } else {
+                if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
                     response.addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
                     closeConnection = false;
+                } else {
+                    response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
                 }
 
                 response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head></html>");
@@ -163,16 +177,11 @@ public class HttpServer {
                 connection.close();
             }
             else {
-                synchronized (registeringSync) {
-                    selector.wakeup();
-                    try {
-                        SelectionKey key = connection.getChannel().register(selector, SelectionKey.OP_READ);
-                        key.attach(connection);
-                    } catch (Throwable ex) {}
-                }
+                readyConnections.add(connection);
+                selector.wakeup();
             }
 
-            System.out.println ("END THREAD !!");
+            System.out.println ("END THREAD !! " + connection.toString());
         }
     }
 }
