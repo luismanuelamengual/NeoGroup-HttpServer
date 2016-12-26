@@ -336,6 +336,9 @@ class ServerImpl implements TimeSource {
                         SelectionKey key = iter.next();
                         iter.remove ();
                         if (key.equals (listenerKey)) {
+
+                            System.out.println ("accept !!");
+
                             if (terminating) {
                                 continue;
                             }
@@ -360,6 +363,8 @@ class ServerImpl implements TimeSource {
                         } else {
                             try {
                                 if (key.isReadable()) {
+                                    System.out.println ("read !!");
+
                                     boolean closed;
                                     SocketChannel chan = (SocketChannel)key.channel();
                                     HttpConnection conn = (HttpConnection)key.attachment();

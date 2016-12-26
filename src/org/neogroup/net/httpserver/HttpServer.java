@@ -89,7 +89,9 @@ public class HttpServer {
                     synchronized (readyConnections) {
                         readyConnections.forEach(connection -> {
                             try {
-                                SelectionKey clientReadKey = connection.getChannel().register(selector, SelectionKey.OP_READ);
+                                SocketChannel clientChannel = connection.getChannel();
+                                clientChannel.configureBlocking(false);
+                                SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                 clientReadKey.attach(connection);
                             }
                             catch (Exception ex) {}
@@ -112,9 +114,11 @@ public class HttpServer {
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(connection);
                                 } else if (key.isReadable()) {
+                                    SocketChannel clientChannel = (SocketChannel)key.channel();
                                     HttpConnection connection = (HttpConnection) key.attachment();
-                                    System.out.println("READ !! " + connection.toString());
                                     key.cancel();
+                                    clientChannel.configureBlocking(true);
+                                    System.out.println("READ !! " + connection.toString());
                                     executor.execute(new ClientHandler(connection));
                                 }
                             } catch (Exception ex) {
@@ -123,6 +127,7 @@ public class HttpServer {
                         }
                     }
                 } catch (Exception ex) {
+                    ex.printStackTrace();
                 }
             }
         }
@@ -168,6 +173,8 @@ public class HttpServer {
                 response.sendResponse();
 
             } catch (Throwable ex) {
+
+                System.out.println ("<<<<  ERRRORRRRRRRRR >>>>> !! " + connection.toString());
                 ex.printStackTrace();
                 closeConnection = true;
             }

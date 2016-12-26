@@ -14,8 +14,8 @@ public class HttpConnection {
 
     public HttpConnection(SocketChannel channel) {
         this.channel = channel;
-        this.inputStream = new HttpInputStream(channel);
-        this.outputStream = new HttpOutputStream(channel);
+        this.inputStream = null;
+        this.outputStream = null;
         closed = false;
     }
 
@@ -24,29 +24,42 @@ public class HttpConnection {
     }
 
     public InputStream getInputStream() {
+        if (inputStream == null) {
+            try {
+                inputStream = channel.socket().getInputStream();
+            }
+            catch (Exception ex) {
+                throw new HttpError("Error retrieving inputStream fron channel");
+            }
+        }
         return inputStream;
     }
 
     public OutputStream getOutputStream() {
+        if (outputStream == null) {
+            try {
+                outputStream = channel.socket().getOutputStream();
+            }
+            catch (Exception ex) {
+                throw new HttpError("Error retrieving outputStream fron channel");
+            }
+        }
         return outputStream;
     }
 
     public synchronized void close() {
         if (!closed) {
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (Exception ex) {
-                }
-                inputStream = null;
-            }
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (Exception ex) {
-                }
-                outputStream = null;
-            }
+
+            try {
+                channel.shutdownInput();
+            } catch (Exception ex) {}
+            inputStream = null;
+
+            try {
+                channel.shutdownOutput();
+            } catch (Exception ex) {}
+            outputStream = null;
+
             try {
                 channel.close();
             } catch (Exception ex) {
