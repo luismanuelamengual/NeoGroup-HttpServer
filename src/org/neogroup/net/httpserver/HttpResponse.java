@@ -26,10 +26,16 @@ public class HttpResponse {
 
     public HttpResponse(SocketChannel channel) {
         this.channel = channel;
-        this.responseCode = HttpResponseCode.HTTP_OK;
         this.headers = new HashMap<>();
         this.bodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
-        this.bodySize = 0;
+    }
+
+    public void startNewResponse() {
+        responseCode = HttpResponseCode.HTTP_OK;
+        headers.clear();
+        headersSent = false;
+        bodyBuffer.clear();
+        bodySize = 0;
     }
 
     public int getResponseCode() {
@@ -98,10 +104,6 @@ public class HttpResponse {
 
     public void flush () {
         writeBuffer();
-    }
-
-    public void sendResponse () {
-        flush();
     }
 
     private void sendHeaders () {

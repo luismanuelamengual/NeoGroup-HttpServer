@@ -147,14 +147,17 @@ public class HttpServer {
             idleConnections.remove(connection);
 
             try {
-                //Creación de la peticion HTTP
-                HttpRequest request = new HttpRequest(connection.getChannel());
-                request.readRequest();
+                //Obtención de la petición y la respuesta de la conexión
+                HttpRequest request = connection.getRequest();
+                HttpResponse response = connection.getResponse();
+
+                //Iniciar una petición nueva
+                request.startNewRequest();
 
                 System.out.println("REQUEST " + connection.toString() + ": " + request.getPath());
 
-                //Creación de la respuesta HTTP
-                HttpResponse response = new HttpResponse(connection.getChannel());
+                //Iniciar una respuesta nueva
+                response.startNewResponse();
                 response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                 response.addHeader(HttpHeader.SERVER, SERVER_NAME);
                 String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
@@ -166,7 +169,7 @@ public class HttpServer {
                 }
 
                 response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola mundako</body></html>");
-                response.sendResponse();
+                response.flush();
 
             } catch (HttpError error) {
                 closeConnection = true;

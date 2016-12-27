@@ -28,14 +28,20 @@ public class HttpRequest {
     private String version;
     private Map<String, String> headers;
     private Map<String,String> parameters;
+    private boolean parametersParsed;
     private byte[] body;
 
     public HttpRequest (SocketChannel channel) {
         this.channel = channel;
         this.headers = new HashMap<>();
+        this.parameters = new HashMap<>();
     }
 
-    public void readRequest () {
+    public void startNewRequest () {
+
+        headers.clear();
+        parameters.clear();
+        parametersParsed = false;
 
         try (ByteArrayOutputStream readStream = new ByteArrayOutputStream()) {
 
@@ -82,7 +88,7 @@ public class HttpRequest {
                                 break;
                             }
                             else {
-                                throw new HttpError ("Null request");
+                                throw new HttpError ("Null Request");
                             }
                         }
                     }
@@ -148,13 +154,13 @@ public class HttpRequest {
 
     public Map<String,String> getParameters() {
 
-        if (parameters == null) {
-            parameters = new HashMap<>();
-            readParametersFromQuery(getQuery());
+        if (!parametersParsed) {
+            addParametersFromQuery(getQuery());
             String requestContentType = getHeader(HttpHeader.CONTENT_TYPE);
             if (requestContentType != null && requestContentType.equals(HttpHeader.APPLICATION_FORM_URL_ENCODED)) {
-                readParametersFromQuery(new String(getBody()));
+                addParametersFromQuery(new String(getBody()));
             }
+            parametersParsed = true;
         }
         return parameters;
     }
@@ -167,7 +173,7 @@ public class HttpRequest {
         return getParameters().containsKey(name);
     }
 
-    private void readParametersFromQuery(String query) {
+    private void addParametersFromQuery(String query) {
 
         try {
             if (query != null) {
