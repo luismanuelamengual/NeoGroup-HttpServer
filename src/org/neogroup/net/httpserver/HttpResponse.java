@@ -2,9 +2,8 @@ package org.neogroup.net.httpserver;
 
 import org.neogroup.utils.MimeTypes;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,19 +14,22 @@ public class HttpResponse {
     private final static String STATUS_LINE_TEMPLATE = "HTTP/1.1 {0} {1}\r\n";
     private final static String HEADER_LINE_TEMPLATE = "{0}: {1}\r\n";
     private final static String SEPARATOR = "\r\n";
-    private final static int MAX_BUFFER_SIZE = 8 * 1024;
+    private final static int WRITE_BUFFER_SIZE = 8 * 1024;
+    private final static int HEADERS_WRITE_BUFFER_SIZE = 2048;
 
-    private final OutputStream outputStream;
+    private final SocketChannel channel;
     private int responseCode;
     private Map<String, String> headers;
-    private ByteArrayOutputStream body;
+    private ByteBuffer buffer;
+    private int bufferSize;
     private boolean headersSent;
 
-    public HttpResponse(OutputStream outputStream) {
-        this.outputStream = outputStream;
+    public HttpResponse(SocketChannel channel) {
+        this.channel = channel;
         this.responseCode = HttpResponseCode.HTTP_OK;
         this.headers = new HashMap<>();
-        this.body = new ByteArrayOutputStream();
+        this.buffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
+        this.bufferSize = 0;
     }
 
     public int getResponseCode() {
@@ -67,8 +69,7 @@ public class HttpResponse {
     }
 
     public void setBody(byte[] body) {
-        this.body.reset();
-        try { this.body.write(body); } catch (Exception ex) {}
+        write(body);
     }
 
     public void write (String text) {
@@ -77,19 +78,30 @@ public class HttpResponse {
 
     public void write (byte[] bytes) {
 
-        if ((bytes.length + body.size()) > MAX_BUFFER_SIZE) {
-            flush();
+        bufferSize += bytes.length;
+        int remainingBytes = bytes.length;
+        int writeIndex = 0;
+        while (remainingBytes > 0) {
+            int remainingBufferBytes = buffer.remaining();
+            if (remainingBytes > remainingBufferBytes) {
+                buffer.put(bytes, writeIndex, remainingBufferBytes);
+                writeBuffer();
+                writeIndex += remainingBufferBytes;
+                remainingBytes -= remainingBufferBytes;
+            }
+            else {
+                buffer.put(bytes, writeIndex, remainingBytes);
+                break;
+            }
         }
-        try { this.body.write(bytes); } catch (Exception ex) {}
     }
 
     public void flush () {
-        writeContents();
+        writeBuffer();
     }
 
     public void sendResponse () {
         flush();
-        try { this.body.close(); } catch (Exception ex) {}
     }
 
     private void sendHeaders () {
@@ -98,20 +110,31 @@ public class HttpResponse {
                 addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
             }
             if (!hasHeader(HttpHeader.CONTENT_LENGTH)) {
-                addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(body.size()));
+                addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(bufferSize));
             }
+
             try {
+                ByteBuffer headersBuffer = ByteBuffer.allocate(HEADERS_WRITE_BUFFER_SIZE);
+
                 //Writing status line
-                outputStream.write(MessageFormat.format(STATUS_LINE_TEMPLATE, responseCode, HttpResponseCode.msg(responseCode)).getBytes());
+                headersBuffer.put(MessageFormat.format(STATUS_LINE_TEMPLATE, responseCode, HttpResponseCode.msg(responseCode)).getBytes());
+                headersBuffer.flip();
+                channel.write(headersBuffer);
 
                 //Writing headers
                 for (String headerName : headers.keySet()) {
                     String headerValue = headers.get(headerName);
-                    outputStream.write(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
+                    headersBuffer.clear();
+                    headersBuffer.put(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
+                    headersBuffer.flip();
+                    channel.write(headersBuffer);
                 }
 
                 //Writing separator
-                outputStream.write(SEPARATOR.getBytes());
+                headersBuffer.clear();
+                headersBuffer.put(SEPARATOR.getBytes());
+                headersBuffer.flip();
+                channel.write(headersBuffer);
             }
             catch (Throwable ex) {
                 throw new HttpError("Error writing headers !!", ex);
@@ -121,10 +144,16 @@ public class HttpResponse {
         }
     }
 
-    private void writeContents () {
+    private void writeBuffer() {
+
         sendHeaders();
-        try { body.writeTo(outputStream); } catch (IOException ex) {}
-        try { outputStream.flush(); } catch (Exception ex) {}
-        body.reset();
+        buffer.flip();
+        try {
+            channel.write(buffer);
+        }
+        catch (Exception ex) {
+            throw new HttpError ("Error writing data !!", ex);
+        }
+        buffer.clear();
     }
 }

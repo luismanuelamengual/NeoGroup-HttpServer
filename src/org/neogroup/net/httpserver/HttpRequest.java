@@ -1,10 +1,10 @@
 package org.neogroup.net.httpserver;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.*;
 
 public class HttpRequest {
@@ -13,11 +13,16 @@ public class HttpRequest {
     private static final String QUERY_PARAMETER_VALUES_REGEX = "[=]";
     private static final String FILE_ENCODING_SYSTEM_PROPERTY_NAME = "file.encoding";
     private static final String URI_SEPARATOR = "/";
-    private final static int READ_BUFFER_SIZE = 2048;
-    private final static byte CR = 13;
-    private final static byte LF = 10;
+    private static final int READ_BUFFER_SIZE = 2048;
+    private static final byte LINE_SEPARATOR_CR = '\r';
+    private static final byte LINE_SEPARATOR_LF = '\n';
+    private static final String LINE_FIELD_SEPARATOR = " ";
+    private static final int HEADER_SEPARATOR = ':';
+    private static final int METHOD_INDEX = 0;
+    private static final int REQUEST_PATH_INDEX = 1;
+    private static final int VERSION_INDEX = 2;
 
-    private final InputStream inputStream;
+    private final SocketChannel channel;
     private String method;
     private URI uri;
     private String version;
@@ -25,18 +30,82 @@ public class HttpRequest {
     private Map<String,String> parameters;
     private byte[] body;
 
-    public HttpRequest (InputStream inputStream) {
-        this.inputStream = inputStream;
+    public HttpRequest (SocketChannel channel) {
+        this.channel = channel;
+        this.headers = new HashMap<>();
     }
 
     public void readRequest () {
-        try {
-            readStatusLine();
-            readHeaders();
+
+        try (ByteArrayOutputStream readStream = new ByteArrayOutputStream()) {
+
+            byte[] readData = null;
+            int totalReadSize = 0;
+            int readSize = 0;
+            ByteBuffer readBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
+            do {
+                readSize = channel.read(readBuffer);
+                if (readSize == -1) {
+                    throw new HttpError ("Socket closed !!");
+                }
+                if (readSize > 0) {
+                    readStream.write(readBuffer.array(), 0, readSize);
+                    readBuffer.rewind();
+                    totalReadSize += readSize;
+                }
+            } while (readSize > 0);
+
+            if (totalReadSize > 0) {
+                readStream.flush();
+                readData = readStream.toByteArray();
+                boolean processedStatusLine = false;
+                int startLineIndex = 0;
+                for (int i = 0; i < readData.length - 1; i++) {
+
+                    if (readData[i] == LINE_SEPARATOR_CR && readData[i + 1] == LINE_SEPARATOR_LF) {
+                        String currentLine = new String(readData, startLineIndex, i-startLineIndex);
+                        startLineIndex = i+2;
+
+                        if (!currentLine.isEmpty()) {
+                            if (!processedStatusLine) {
+                                processStatusLine (currentLine);
+                                processedStatusLine = true;
+                            }
+                            else {
+                                processHeaderLine(currentLine);
+                            }
+                        }
+                        else {
+                            if (processedStatusLine) {
+                                int bodySize = totalReadSize - (i+2);
+                                body = Arrays.copyOfRange(readData, i+2, totalReadSize);
+                                break;
+                            }
+                            else {
+                                throw new HttpError ("Null request");
+                            }
+                        }
+                    }
+                }
+            }
         }
         catch (Exception ex) {
-            throw new HttpError ("Error reading request headers !!", ex);
+            throw new HttpError ("Error reading request !!", ex);
         }
+    }
+
+    private void processStatusLine (String statusLine) throws Exception {
+
+        String[] parts = statusLine.split(LINE_FIELD_SEPARATOR);
+        method = parts[METHOD_INDEX];
+        uri = new URI(parts[REQUEST_PATH_INDEX]);
+        version = parts[VERSION_INDEX];
+    }
+
+    private void processHeaderLine (String headerLine) throws Exception {
+
+         int separatorIndex = headerLine.indexOf(HEADER_SEPARATOR);
+         headers.put(headerLine.substring(0, separatorIndex), headerLine.substring(separatorIndex+1).trim());
     }
 
     public String getMethod() {
@@ -74,14 +143,6 @@ public class HttpRequest {
     }
 
     public byte[] getBody() {
-        if (body == null) {
-            try {
-                readBody();
-            }
-            catch (Exception ex) {
-                throw new HttpError ("Error reading request body !!", ex);
-            }
-        }
         return body;
     }
 
@@ -104,164 +165,6 @@ public class HttpRequest {
 
     public boolean hasParameter (String name) {
         return getParameters().containsKey(name);
-    }
-
-    private void readStatusLine() throws IOException {
-
-        String requestLine = null;
-        do {
-            char[] buf = new char [READ_BUFFER_SIZE];
-            boolean gotCR = false, gotLF = false;
-            int pos = 0;
-            StringBuffer lineBuf = new StringBuffer();
-            while (!gotLF) {
-                int c = inputStream.read();
-                if (c == -1) {
-                    throw new IOException("Socket closed remotely !!");
-                }
-                if (gotCR) {
-                    if (c == LF) {
-                        gotLF = true;
-                    } else {
-                        gotCR = false;
-                        if (pos == READ_BUFFER_SIZE) {
-                            lineBuf.append (buf);
-                            pos = 0;
-                        }
-                        buf[pos++] = CR;
-                        if (pos == READ_BUFFER_SIZE) {
-                            lineBuf.append (buf);
-                            pos = 0;
-                        }
-                        buf[pos++] = (char)c;
-                    }
-                } else {
-                    if (c == CR) {
-                        gotCR = true;
-                    } else {
-                        if (pos == READ_BUFFER_SIZE) {
-                            lineBuf.append (buf);
-                            pos = 0;
-                        }
-                        buf[pos++] = (char)c;
-                    }
-                }
-            }
-            lineBuf.append (buf, 0, pos);
-            requestLine = lineBuf.toString();
-        } while (requestLine.isEmpty());
-
-        if (requestLine == null) {
-            throw new IOException("Bad request line !!");
-        }
-        int space = requestLine.indexOf (' ');
-        if (space == -1) {
-            throw new IOException("Bad request line !!");
-        }
-        method = requestLine.substring (0, space);
-        int start = space+1;
-        space = requestLine.indexOf(' ', start);
-        if (space == -1) {
-            throw new IOException("Bad request line !!");
-        }
-        String uriStr = requestLine.substring (start, space);
-        try { uri = new URI (uriStr); } catch (Exception ex) {}
-        start = space+1;
-        version = requestLine.substring (start);
-    }
-
-    private void readHeaders () throws IOException {
-
-        headers = new HashMap<>();
-
-        char s[] = new char[10];
-        int len = 0;
-        int firstc = inputStream.read();
-
-        if (firstc == CR || firstc == LF) {
-            int c = inputStream.read();
-            if (c == CR || c == LF) {
-                return;
-            }
-            s[0] = (char)firstc;
-            len = 1;
-            firstc = c;
-        }
-
-        while (firstc != LF && firstc != CR && firstc >= 0) {
-            int keyend = -1;
-            int c;
-            boolean inKey = firstc > ' ';
-            s[len++] = (char) firstc;
-            parseloop:{
-                while ((c = inputStream.read()) >= 0) {
-                    switch (c) {
-                        case ':':
-                            if (inKey && len > 0)
-                                keyend = len;
-                            inKey = false;
-                            break;
-                        case '\t':
-                            c = ' ';
-                        case ' ':
-                            inKey = false;
-                            break;
-                        case CR:
-                        case LF:
-                            firstc = inputStream.read();
-                            if (c == CR && firstc == LF) {
-                                firstc = inputStream.read();
-                                if (firstc == CR)
-                                    firstc = inputStream.read();
-                            }
-                            if (firstc == LF || firstc == CR || firstc > ' ')
-                                break parseloop;
-                            c = ' ';
-                            break;
-                    }
-                    if (len >= s.length) {
-                        char ns[] = new char[s.length * 2];
-                        System.arraycopy(s, 0, ns, 0, len);
-                        s = ns;
-                    }
-                    s[len++] = (char) c;
-                }
-                firstc = -1;
-            }
-            while (len > 0 && s[len - 1] <= ' ')
-                len--;
-            String k;
-            if (keyend <= 0) {
-                k = null;
-                keyend = 0;
-            } else {
-                k = String.copyValueOf(s, 0, keyend);
-                if (keyend < len && s[keyend] == ':')
-                    keyend++;
-                while (keyend < len && s[keyend] <= ' ')
-                    keyend++;
-            }
-            String v;
-            if (keyend >= len)
-                v = new String();
-            else
-                v = String.copyValueOf(s, keyend, len - keyend);
-
-            headers.put (k,v);
-            len = 0;
-        }
-    }
-
-    private void readBody () throws IOException {
-
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-            int read = inputStream.read();
-            while (read != -1) {
-                byteArrayOutputStream.write(read);
-                read = inputStream.read();
-            }
-            body = byteArrayOutputStream.toByteArray();
-        }
     }
 
     private void readParametersFromQuery(String query) {

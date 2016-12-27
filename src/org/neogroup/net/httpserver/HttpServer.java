@@ -117,7 +117,6 @@ public class HttpServer {
                                     SocketChannel clientChannel = (SocketChannel)key.channel();
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
-                                    clientChannel.configureBlocking(true);
                                     System.out.println("READ !! " + connection.toString());
                                     executor.execute(new ClientHandler(connection));
                                 }
@@ -149,13 +148,13 @@ public class HttpServer {
 
             try {
                 //Creación de la peticion HTTP
-                HttpRequest request = new HttpRequest(connection.getInputStream());
+                HttpRequest request = new HttpRequest(connection.getChannel());
                 request.readRequest();
 
-                System.out.println("PROCESSING [" + request.getPath() + "] !! " + connection.toString());
+                System.out.println("REQUEST " + connection.toString() + ": " + request.getPath());
 
                 //Creación de la respuesta HTTP
-                HttpResponse response = new HttpResponse(connection.getOutputStream());
+                HttpResponse response = new HttpResponse(connection.getChannel());
                 response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                 response.addHeader(HttpHeader.SERVER, SERVER_NAME);
                 String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
