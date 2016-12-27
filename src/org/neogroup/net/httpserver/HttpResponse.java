@@ -20,16 +20,16 @@ public class HttpResponse {
     private final SocketChannel channel;
     private int responseCode;
     private Map<String, String> headers;
-    private ByteBuffer buffer;
-    private int bufferSize;
+    private ByteBuffer bodyBuffer;
+    private int bodySize;
     private boolean headersSent;
 
     public HttpResponse(SocketChannel channel) {
         this.channel = channel;
         this.responseCode = HttpResponseCode.HTTP_OK;
         this.headers = new HashMap<>();
-        this.buffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
-        this.bufferSize = 0;
+        this.bodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
+        this.bodySize = 0;
     }
 
     public int getResponseCode() {
@@ -78,19 +78,19 @@ public class HttpResponse {
 
     public void write (byte[] bytes) {
 
-        bufferSize += bytes.length;
+        bodySize += bytes.length;
         int remainingBytes = bytes.length;
         int writeIndex = 0;
         while (remainingBytes > 0) {
-            int remainingBufferBytes = buffer.remaining();
+            int remainingBufferBytes = bodyBuffer.remaining();
             if (remainingBytes > remainingBufferBytes) {
-                buffer.put(bytes, writeIndex, remainingBufferBytes);
+                bodyBuffer.put(bytes, writeIndex, remainingBufferBytes);
                 writeBuffer();
                 writeIndex += remainingBufferBytes;
                 remainingBytes -= remainingBufferBytes;
             }
             else {
-                buffer.put(bytes, writeIndex, remainingBytes);
+                bodyBuffer.put(bytes, writeIndex, remainingBytes);
                 break;
             }
         }
@@ -110,7 +110,7 @@ public class HttpResponse {
                 addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
             }
             if (!hasHeader(HttpHeader.CONTENT_LENGTH)) {
-                addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(bufferSize));
+                addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(bodySize));
             }
 
             try {
@@ -147,13 +147,13 @@ public class HttpResponse {
     private void writeBuffer() {
 
         sendHeaders();
-        buffer.flip();
+        bodyBuffer.flip();
         try {
-            channel.write(buffer);
+            channel.write(bodyBuffer);
         }
         catch (Exception ex) {
             throw new HttpError ("Error writing data !!", ex);
         }
-        buffer.clear();
+        bodyBuffer.clear();
     }
 }
