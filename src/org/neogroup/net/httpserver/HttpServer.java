@@ -144,10 +144,7 @@ public class HttpServer {
         @Override
         public void run() {
 
-            System.out.println ("INIT THREAD !! " + connection.toString());
-
             boolean closeConnection = true;
-
             idleConnections.remove(connection);
 
             try {
@@ -155,7 +152,7 @@ public class HttpServer {
                 HttpRequest request = new HttpRequest(connection.getInputStream());
                 request.readRequest();
 
-                System.out.println ("PROCESSING [" + request.getPath() + "] !! " + connection.toString());
+                System.out.println("PROCESSING [" + request.getPath() + "] !! " + connection.toString());
 
                 //Creación de la respuesta HTTP
                 HttpResponse response = new HttpResponse(connection.getOutputStream());
@@ -169,12 +166,12 @@ public class HttpServer {
                     response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
                 }
 
-                response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head></html>");
+                response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola mundako</body></html>");
                 response.sendResponse();
 
+            } catch (HttpError error) {
+                closeConnection = true;
             } catch (Throwable ex) {
-
-                System.out.println ("<<<<  ERRRORRRRRRRRR >>>>> !! " + connection.toString());
                 ex.printStackTrace();
                 closeConnection = true;
             }
@@ -187,8 +184,6 @@ public class HttpServer {
                 readyConnections.add(connection);
                 selector.wakeup();
             }
-
-            System.out.println ("END THREAD !! " + connection.toString());
         }
     }
 }
