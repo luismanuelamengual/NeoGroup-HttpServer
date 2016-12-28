@@ -14,14 +14,17 @@ public class HttpServer {
     public static final String SERVER_NAME = "NeoGroup-HttpServer";
 
     private static final int DEFAULT_PORT = 80;
+    private static final long CONNECTION_CHECKOUT_INTERVAL = 10000;
+    private static final long MAX_IDLE_CONNECTION_INTERVAL = 5000;
 
     private Selector selector;
     private ServerSocketChannel serverChannel;
     private Executor executor;
     private ServerHandler serverHandler;
     private boolean running;
-    private Set<HttpConnection> readyConnections;
     private Set<HttpConnection> idleConnections;
+    private Set<HttpConnection> runningConnections;
+    private long lastConnectionCheckoutTimestamp;
 
     public HttpServer() {
         this(DEFAULT_PORT);
@@ -43,8 +46,9 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            runningConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
-            readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+            lastConnectionCheckoutTimestamp = System.currentTimeMillis();
         } catch (Exception ex) {
             throw new RuntimeException("Error creating HttpServer", ex);
         }
@@ -86,17 +90,41 @@ public class HttpServer {
             while (running) {
                 try {
 
-                    synchronized (readyConnections) {
-                        readyConnections.forEach(connection -> {
+                    long time = System.currentTimeMillis();
+
+                    //Reconectar conexiones
+                    synchronized (idleConnections) {
+                        Iterator<HttpConnection> iterator = idleConnections.iterator();
+                        while (iterator.hasNext()) {
+                            HttpConnection connection = iterator.next();
                             try {
                                 SocketChannel clientChannel = connection.getChannel();
+                                System.out.println("RE-REGISTER " + connection.toString());
                                 clientChannel.configureBlocking(false);
                                 SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                 clientReadKey.attach(connection);
+                                connection.setActivityTimestamp(System.currentTimeMillis());
+                                runningConnections.add(connection);
+                                iterator.remove();
                             }
                             catch (Exception ex) {}
-                        });
-                        readyConnections.clear();
+                        }
+                    }
+
+                    //Eliminar conexiones sin actividad
+                    if ((time - lastConnectionCheckoutTimestamp) > CONNECTION_CHECKOUT_INTERVAL) {
+                        synchronized (runningConnections) {
+                            Iterator<HttpConnection> iterator = runningConnections.iterator();
+                            while (iterator.hasNext()) {
+                                HttpConnection connection = iterator.next();
+                                if ((time - connection.getActivityTimestamp()) > MAX_IDLE_CONNECTION_INTERVAL) {
+                                    connection.close();
+                                    System.out.println ("DELETE " + connection.toString());
+                                    iterator.remove();
+                                }
+                            }
+                        }
+                        lastConnectionCheckoutTimestamp = time;
                     }
 
                     selector.select(1000);
@@ -109,20 +137,21 @@ public class HttpServer {
                                 if (key.isAcceptable()) {
                                     SocketChannel clientChannel = serverChannel.accept();
                                     HttpConnection connection = new HttpConnection(clientChannel);
-                                    System.out.println("ACCEPT !! " + connection.toString());
+                                    System.out.println("REGISTER " + connection.toString());
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(connection);
-                                } else if (key.isReadable()) {
+                                    connection.setActivityTimestamp(System.currentTimeMillis());
+                                    runningConnections.add(connection);
+                                }
+                                else if (key.isReadable()) {
                                     SocketChannel clientChannel = (SocketChannel)key.channel();
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
-                                    System.out.println("READ !! " + connection.toString());
+                                    System.out.println("READ " + connection.toString());
                                     executor.execute(new ClientHandler(connection));
                                 }
-                            } catch (Exception ex) {
-                                System.err.println("Error handling client: " + key.channel());
-                            }
+                            } catch (Exception ex) {}
                         }
                     }
                 } catch (Exception ex) {
@@ -144,7 +173,6 @@ public class HttpServer {
         public void run() {
 
             boolean closeConnection = true;
-            idleConnections.remove(connection);
 
             try {
                 //Obtención de la petición y la respuesta de la conexión
@@ -170,20 +198,19 @@ public class HttpServer {
 
                 response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola mundako</body></html>");
                 response.flush();
-
-            } catch (HttpError error) {
-                closeConnection = true;
-            } catch (Throwable ex) {
-                ex.printStackTrace();
+            }
+            catch (Throwable ex) {
                 closeConnection = true;
             }
+
+            runningConnections.remove(connection);
 
             //Cerrar la conexión
             if (closeConnection) {
                 connection.close();
             }
             else {
-                readyConnections.add(connection);
+                idleConnections.add(connection);
                 selector.wakeup();
             }
         }
