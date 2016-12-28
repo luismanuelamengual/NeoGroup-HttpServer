@@ -3,7 +3,6 @@ package org.neogroup.net.httpserver;
 import org.neogroup.utils.MimeTypes;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,15 +16,15 @@ public class HttpResponse {
     private final static int WRITE_BUFFER_SIZE = 8 * 1024;
     private final static int HEADERS_WRITE_BUFFER_SIZE = 2048;
 
-    private final SocketChannel channel;
+    private final HttpConnection connection;
     private int responseCode;
     private Map<String, String> headers;
     private ByteBuffer bodyBuffer;
     private int bodySize;
     private boolean headersSent;
 
-    public HttpResponse(SocketChannel channel) {
-        this.channel = channel;
+    public HttpResponse(HttpConnection connection) {
+        this.connection = connection;
         this.headers = new HashMap<>();
         this.bodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
     }
@@ -121,7 +120,7 @@ public class HttpResponse {
                 //Writing status line
                 headersBuffer.put(MessageFormat.format(STATUS_LINE_TEMPLATE, responseCode, HttpResponseCode.msg(responseCode)).getBytes());
                 headersBuffer.flip();
-                channel.write(headersBuffer);
+                connection.getChannel().write(headersBuffer);
 
                 //Writing headers
                 for (String headerName : headers.keySet()) {
@@ -129,16 +128,17 @@ public class HttpResponse {
                     headersBuffer.clear();
                     headersBuffer.put(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
                     headersBuffer.flip();
-                    channel.write(headersBuffer);
+                    connection.getChannel().write(headersBuffer);
                 }
 
                 //Writing separator
                 headersBuffer.clear();
                 headersBuffer.put(SEPARATOR.getBytes());
                 headersBuffer.flip();
-                channel.write(headersBuffer);
+                connection.getChannel().write(headersBuffer);
             }
             catch (Throwable ex) {
+                connection.close();
                 throw new HttpError("Error writing headers !!", ex);
             }
 
@@ -151,9 +151,10 @@ public class HttpResponse {
         sendHeaders();
         bodyBuffer.flip();
         try {
-            channel.write(bodyBuffer);
+            connection.getChannel().write(bodyBuffer);
         }
         catch (Exception ex) {
+            connection.close();
             throw new HttpError ("Error writing data !!", ex);
         }
         bodyBuffer.clear();

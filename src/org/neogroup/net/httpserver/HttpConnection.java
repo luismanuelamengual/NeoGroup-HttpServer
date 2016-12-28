@@ -10,16 +10,16 @@ public class HttpConnection {
     private final HttpResponse response;
     private boolean closed;
     private long creationTimestamp;
-    private long activityTimestamp;
+    private long regsitrationTimestamp;
 
     public HttpConnection(SocketChannel channel) {
         this.channel = channel;
-        request = new HttpRequest(channel);
-        response = new HttpResponse(channel);
+        request = new HttpRequest(this);
+        response = new HttpResponse(this);
         closed = false;
         long timestamp = System.currentTimeMillis();
         creationTimestamp = timestamp;
-        activityTimestamp = timestamp;
+        regsitrationTimestamp = timestamp;
     }
 
     public SocketChannel getChannel() {
@@ -43,11 +43,11 @@ public class HttpConnection {
     }
 
     public long getRegistrationTimestamp() {
-        return activityTimestamp;
+        return regsitrationTimestamp;
     }
 
     public void setRegistrationTimestamp(long registrationTimestamp) {
-        this.activityTimestamp = registrationTimestamp;
+        this.regsitrationTimestamp = registrationTimestamp;
     }
 
     public synchronized void close() {

@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.*;
 
 public class HttpRequest {
@@ -22,7 +21,7 @@ public class HttpRequest {
     private static final int REQUEST_PATH_INDEX = 1;
     private static final int VERSION_INDEX = 2;
 
-    private final SocketChannel channel;
+    private final HttpConnection connection;
     private String method;
     private URI uri;
     private String version;
@@ -31,8 +30,8 @@ public class HttpRequest {
     private boolean parametersParsed;
     private byte[] body;
 
-    public HttpRequest (SocketChannel channel) {
-        this.channel = channel;
+    public HttpRequest (HttpConnection connection) {
+        this.connection = connection;
         this.headers = new HashMap<>();
         this.parameters = new HashMap<>();
     }
@@ -50,7 +49,7 @@ public class HttpRequest {
             int readSize = 0;
             ByteBuffer readBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
             do {
-                readSize = channel.read(readBuffer);
+                readSize = connection.getChannel().read(readBuffer);
                 if (readSize == -1) {
                     throw new HttpError ("Socket closed !!");
                 }
@@ -96,6 +95,7 @@ public class HttpRequest {
             }
         }
         catch (Exception ex) {
+            connection.close();
             throw new HttpError ("Error reading request !!", ex);
         }
     }
@@ -193,6 +193,7 @@ public class HttpRequest {
             }
         }
         catch (Exception ex) {
+            connection.close();
             throw new HttpError("Error reading request parameters !!", ex);
         }
     }

@@ -201,6 +201,8 @@ public class HttpServer {
                 }
 
                 response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola mundako</body></html>");
+
+                //Escribir datos que hayan quedado almacenados en la respuesta http
                 response.flush();
             }
             catch (Throwable ex) {
@@ -210,12 +212,13 @@ public class HttpServer {
             runningConnections.remove(connection);
 
             //Cerrar la conexión
-            if (closeConnection) {
-                connection.close();
-            }
-            else {
-                readyConnections.add(connection);
-                selector.wakeup();
+            if (!connection.isClosed()) {
+                if (closeConnection) {
+                    connection.close();
+                } else {
+                    readyConnections.add(connection);
+                    selector.wakeup();
+                }
             }
         }
     }
