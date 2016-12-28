@@ -42,12 +42,12 @@ public class HttpConnection {
         return creationTimestamp;
     }
 
-    public long getActivityTimestamp() {
+    public long getRegistrationTimestamp() {
         return activityTimestamp;
     }
 
-    public void setActivityTimestamp(long activityTimestamp) {
-        this.activityTimestamp = activityTimestamp;
+    public void setRegistrationTimestamp(long registrationTimestamp) {
+        this.activityTimestamp = registrationTimestamp;
     }
 
     public synchronized void close() {

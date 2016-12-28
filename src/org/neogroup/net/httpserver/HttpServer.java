@@ -24,6 +24,7 @@ public class HttpServer {
     private boolean running;
     private Set<HttpConnection> idleConnections;
     private Set<HttpConnection> runningConnections;
+    private Set<HttpConnection> readyConnections;
     private long lastConnectionCheckoutTimestamp;
 
     public HttpServer() {
@@ -46,8 +47,9 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-            runningConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+            runningConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+            readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             lastConnectionCheckoutTimestamp = System.currentTimeMillis();
         } catch (Exception ex) {
             throw new RuntimeException("Error creating HttpServer", ex);
@@ -93,8 +95,8 @@ public class HttpServer {
                     long time = System.currentTimeMillis();
 
                     //Reconectar conexiones
-                    synchronized (idleConnections) {
-                        Iterator<HttpConnection> iterator = idleConnections.iterator();
+                    synchronized (readyConnections) {
+                        Iterator<HttpConnection> iterator = readyConnections.iterator();
                         while (iterator.hasNext()) {
                             HttpConnection connection = iterator.next();
                             try {
@@ -103,9 +105,9 @@ public class HttpServer {
                                 clientChannel.configureBlocking(false);
                                 SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                 clientReadKey.attach(connection);
-                                connection.setActivityTimestamp(System.currentTimeMillis());
-                                runningConnections.add(connection);
+                                connection.setRegistrationTimestamp(System.currentTimeMillis());
                                 iterator.remove();
+                                idleConnections.add(connection);
                             }
                             catch (Exception ex) {}
                         }
@@ -113,11 +115,11 @@ public class HttpServer {
 
                     //Eliminar conexiones sin actividad
                     if ((time - lastConnectionCheckoutTimestamp) > CONNECTION_CHECKOUT_INTERVAL) {
-                        synchronized (runningConnections) {
-                            Iterator<HttpConnection> iterator = runningConnections.iterator();
+                        synchronized (idleConnections) {
+                            Iterator<HttpConnection> iterator = idleConnections.iterator();
                             while (iterator.hasNext()) {
                                 HttpConnection connection = iterator.next();
-                                if ((time - connection.getActivityTimestamp()) > MAX_IDLE_CONNECTION_INTERVAL) {
+                                if ((time - connection.getRegistrationTimestamp()) > MAX_IDLE_CONNECTION_INTERVAL) {
                                     connection.close();
                                     System.out.println ("DELETE " + connection.toString());
                                     iterator.remove();
@@ -141,14 +143,16 @@ public class HttpServer {
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(connection);
-                                    connection.setActivityTimestamp(System.currentTimeMillis());
-                                    runningConnections.add(connection);
+                                    connection.setRegistrationTimestamp(System.currentTimeMillis());
+                                    idleConnections.add(connection);
                                 }
                                 else if (key.isReadable()) {
                                     SocketChannel clientChannel = (SocketChannel)key.channel();
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
                                     System.out.println("READ " + connection.toString());
+                                    idleConnections.remove(connection);
+                                    runningConnections.add(connection);
                                     executor.execute(new ClientHandler(connection));
                                 }
                             } catch (Exception ex) {}
@@ -210,7 +214,7 @@ public class HttpServer {
                 connection.close();
             }
             else {
-                idleConnections.add(connection);
+                readyConnections.add(connection);
                 selector.wakeup();
             }
         }
