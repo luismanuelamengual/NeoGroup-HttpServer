@@ -22,6 +22,7 @@ public class HttpServer {
     private Executor executor;
     private ServerHandler serverHandler;
     private boolean running;
+    private Set<HttpContext> contexts;
     private Set<HttpConnection> idleConnections;
     private Set<HttpConnection> runningConnections;
     private Set<HttpConnection> readyConnections;
@@ -47,6 +48,7 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
             idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             runningConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
@@ -62,6 +64,14 @@ public class HttpServer {
 
     public void setExecutor(Executor executor) {
         this.executor = executor;
+    }
+
+    public void addContext (HttpContext context) {
+        contexts.add(context);
+    }
+
+    public void removeContext (HttpContext context) {
+        contexts.remove(context);
     }
 
     public void start() {
@@ -200,7 +210,17 @@ public class HttpServer {
                     response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
                 }
 
-                response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola mundako</body></html>");
+                //Ejecutar el contexto que coincida con el path de la petición
+                HttpContext matchContext = null;
+                for (HttpContext context : contexts) {
+                    if (request.getPath().startsWith(context.getPath())) {
+                        matchContext = context;
+                        break;
+                    }
+                };
+                if (matchContext != null) {
+                    matchContext.onContext(request, response);
+                }
 
                 //Escribir datos que hayan quedado almacenados en la respuesta http
                 response.flush();

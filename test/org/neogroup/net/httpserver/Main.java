@@ -33,6 +33,12 @@ public class Main {
 
         HttpServer server = new HttpServer(1408);
         server.setExecutor(Executors.newCachedThreadPool());
+        server.addContext(new HttpContext("/test/") {
+            @Override
+            public void onContext(HttpRequest request, HttpResponse response) {
+                response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola ramach</body></html>");
+            }
+        });
         server.start();
     }
 }
