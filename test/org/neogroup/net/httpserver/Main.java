@@ -39,6 +39,7 @@ public class Main {
                 response.write("<html><head><link rel=\"stylesheet\" type=\"text/css\" href=\"mystyle.css\"></head><body>Hola ramach</body></html>");
             }
         });
+        server.addContext(new HttpFolderContext("/resources/", "/home/luis/git/sitrackfrontend/public"));
         server.start();
     }
 }
