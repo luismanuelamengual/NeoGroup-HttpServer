@@ -1,3 +1,4 @@
+
 package org.neogroup.net.httpserver;
 
 import java.io.ByteArrayOutputStream;
@@ -29,6 +30,7 @@ public class HttpRequest {
     private Map<String,String> parameters;
     private boolean parametersParsed;
     private byte[] body;
+    private boolean hasErrors;
 
     public HttpRequest (HttpConnection connection) {
         this.connection = connection;
@@ -38,20 +40,24 @@ public class HttpRequest {
 
     public void startNewRequest () {
 
+        method = null;
+        uri = null;
+        version = null;
         headers.clear();
         parameters.clear();
         parametersParsed = false;
+        hasErrors = false;
 
+        //Leer una peticion nueva
+        byte[] readData = null;
         try (ByteArrayOutputStream readStream = new ByteArrayOutputStream()) {
-
-            byte[] readData = null;
             int totalReadSize = 0;
             int readSize = 0;
             ByteBuffer readBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
             do {
                 readSize = connection.getChannel().read(readBuffer);
                 if (readSize == -1) {
-                    throw new HttpError ("Socket closed !!");
+                    throw new HttpException("Socket closed !!");
                 }
                 if (readSize > 0) {
                     readStream.write(readBuffer.array(), 0, readSize);
@@ -63,40 +69,49 @@ public class HttpRequest {
             if (totalReadSize > 0) {
                 readStream.flush();
                 readData = readStream.toByteArray();
+            }
+        }
+        catch (Exception ex) {
+            connection.close();
+            throw new HttpException("Error reading request !!", ex);
+        }
+
+        //Parsear la nueva petición
+        if (readData != null) {
+            try {
                 boolean processedStatusLine = false;
                 int startLineIndex = 0;
                 for (int i = 0; i < readData.length - 1; i++) {
 
                     if (readData[i] == LINE_SEPARATOR_CR && readData[i + 1] == LINE_SEPARATOR_LF) {
-                        String currentLine = new String(readData, startLineIndex, i-startLineIndex);
-                        startLineIndex = i+2;
+                        String currentLine = new String(readData, startLineIndex, i - startLineIndex);
+                        startLineIndex = i + 2;
 
                         if (!currentLine.isEmpty()) {
                             if (!processedStatusLine) {
-                                processStatusLine (currentLine);
+                                processStatusLine(currentLine);
                                 processedStatusLine = true;
-                            }
-                            else {
+                            } else {
                                 processHeaderLine(currentLine);
                             }
-                        }
-                        else {
+                        } else {
                             if (processedStatusLine) {
-                                int bodySize = totalReadSize - (i+2);
-                                body = Arrays.copyOfRange(readData, i+2, totalReadSize);
+                                int bodySize = readData.length - (i + 2);
+                                body = Arrays.copyOfRange(readData, i + 2, readData.length);
                                 break;
-                            }
-                            else {
-                                throw new HttpError ("Null Request");
+                            } else {
+                                throw new HttpException("Empty status line");
                             }
                         }
                     }
                 }
             }
+            catch (Exception exception) {
+                hasErrors = true;
+            }
         }
-        catch (Exception ex) {
-            connection.close();
-            throw new HttpError ("Error reading request !!", ex);
+        else {
+            hasErrors = true;
         }
     }
 
@@ -173,6 +188,10 @@ public class HttpRequest {
         return getParameters().containsKey(name);
     }
 
+    public boolean hasErrors() {
+        return hasErrors;
+    }
+
     private void addParametersFromQuery(String query) {
 
         try {
@@ -194,7 +213,7 @@ public class HttpRequest {
         }
         catch (Exception ex) {
             connection.close();
-            throw new HttpError("Error reading request parameters !!", ex);
+            throw new HttpException("Error reading request parameters !!", ex);
         }
     }
 }

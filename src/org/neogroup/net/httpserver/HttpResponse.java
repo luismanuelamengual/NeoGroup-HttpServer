@@ -139,7 +139,7 @@ public class HttpResponse {
             }
             catch (Throwable ex) {
                 connection.close();
-                throw new HttpError("Error writing headers !!", ex);
+                throw new HttpException("Error writing headers !!", ex);
             }
 
             headersSent = true;
@@ -155,7 +155,7 @@ public class HttpResponse {
         }
         catch (Exception ex) {
             connection.close();
-            throw new HttpError ("Error writing data !!", ex);
+            throw new HttpException("Error writing data !!", ex);
         }
         bodyBuffer.clear();
     }

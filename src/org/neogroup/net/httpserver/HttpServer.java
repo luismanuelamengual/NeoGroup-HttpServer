@@ -1,6 +1,8 @@
 
 package org.neogroup.net.httpserver;
 
+import org.neogroup.util.MimeTypes;
+
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -188,11 +190,11 @@ public class HttpServer {
 
             boolean closeConnection = true;
 
-            try {
-                //Obtención de la petición y la respuesta de la conexión
-                HttpRequest request = connection.getRequest();
-                HttpResponse response = connection.getResponse();
+            //Obtención de la petición y la respuesta de la conexión
+            HttpRequest request = connection.getRequest();
+            HttpResponse response = connection.getResponse();
 
+            try {
                 //Iniciar una petición nueva
                 request.startNewRequest();
 
@@ -202,24 +204,44 @@ public class HttpServer {
                 response.startNewResponse();
                 response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                 response.addHeader(HttpHeader.SERVER, SERVER_NAME);
-                String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
-                if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
-                    response.addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
-                    closeConnection = false;
-                } else {
-                    response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
-                }
 
-                //Ejecutar el contexto que coincida con el path de la petición
-                HttpContext matchContext = null;
-                for (HttpContext context : contexts) {
-                    if (request.getPath().startsWith(context.getPath())) {
-                        matchContext = context;
-                        break;
+                if (request.hasErrors()) {
+                    response.setResponseCode(HttpResponseCode.HTTP_BAD_REQUEST);
+                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                    response.setBody("Bad request !!");
+                }
+                else {
+                    String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
+                    if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
+                        response.addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
+                        closeConnection = false;
+                    } else {
+                        response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
                     }
-                };
-                if (matchContext != null) {
-                    matchContext.onContext(request, response);
+
+                    //Ejecutar el contexto que coincida con el path de la petición
+                    HttpContext matchContext = null;
+                    for (HttpContext context : contexts) {
+                        if (request.getPath().startsWith(context.getPath())) {
+                            matchContext = context;
+                            break;
+                        }
+                    }
+
+                    if (matchContext != null) {
+                        try {
+                            matchContext.onContext(request, response);
+                        }
+                        catch (Throwable contextException) {
+                            response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
+                            response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                            response.setBody("Error processing context request path " + request.getPath() + "\". Error: " + contextException.toString());
+                        }
+                    } else {
+                        response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
+                        response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                        response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
+                    }
                 }
 
                 //Escribir datos que hayan quedado almacenados en la respuesta http
