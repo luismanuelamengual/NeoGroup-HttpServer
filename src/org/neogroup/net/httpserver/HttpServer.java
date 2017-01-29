@@ -196,7 +196,12 @@ public class HttpServer {
 
             try {
                 //Iniciar una petición nueva
-                request.startNewRequest();
+                boolean completeRequest = false;
+                try {
+                    request.startNewRequest();
+                    completeRequest = true;
+                }
+                catch (HttpBadRequestException badRequestException) {}
 
                 System.out.println("REQUEST " + connection.toString() + ": " + request.getPath());
 
@@ -205,7 +210,7 @@ public class HttpServer {
                 response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                 response.addHeader(HttpHeader.SERVER, SERVER_NAME);
 
-                if (request.hasErrors()) {
+                if (!completeRequest) {
                     response.setResponseCode(HttpResponseCode.HTTP_BAD_REQUEST);
                     response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
                     response.setBody("Bad request !!");

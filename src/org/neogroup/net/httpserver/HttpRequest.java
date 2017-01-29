@@ -30,7 +30,6 @@ public class HttpRequest {
     private Map<String,String> parameters;
     private boolean parametersParsed;
     private byte[] body;
-    private boolean hasErrors;
 
     public HttpRequest (HttpConnection connection) {
         this.connection = connection;
@@ -46,7 +45,6 @@ public class HttpRequest {
         headers.clear();
         parameters.clear();
         parametersParsed = false;
-        hasErrors = false;
 
         //Leer una peticion nueva
         byte[] readData = null;
@@ -78,8 +76,10 @@ public class HttpRequest {
 
         //Parsear la nueva petición
         if (readData != null) {
+            boolean processedStatusLine = false;
+            boolean processedRequest = false;
             try {
-                boolean processedStatusLine = false;
+
                 int startLineIndex = 0;
                 for (int i = 0; i < readData.length - 1; i++) {
 
@@ -98,20 +98,22 @@ public class HttpRequest {
                             if (processedStatusLine) {
                                 int bodySize = readData.length - (i + 2);
                                 body = Arrays.copyOfRange(readData, i + 2, readData.length);
-                                break;
-                            } else {
-                                throw new HttpException("Empty status line");
+                                processedRequest = true;
                             }
+                            break;
                         }
                     }
                 }
             }
             catch (Exception exception) {
-                hasErrors = true;
+                throw new HttpBadRequestException("Malformed request !!", exception);
+            }
+            if (!processedRequest) {
+                throw new HttpBadRequestException("Incomplete request !!");
             }
         }
         else {
-            hasErrors = true;
+            throw new HttpBadRequestException("Empty request !!");
         }
     }
 
@@ -186,10 +188,6 @@ public class HttpRequest {
 
     public boolean hasParameter (String name) {
         return getParameters().containsKey(name);
-    }
-
-    public boolean hasErrors() {
-        return hasErrors;
     }
 
     private void addParametersFromQuery(String query) {

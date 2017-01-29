@@ -65,7 +65,7 @@ public class HttpResourcesContext extends HttpContext {
                     handleFileResponse(request, response, file);
                 }
             } else {
-                handleResourceNotFoundResponse(request, response, file.getName());
+                handleResourceNotFoundResponse(request, response, file.toString());
             }
         }
     }
