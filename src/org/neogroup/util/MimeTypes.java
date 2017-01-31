@@ -826,7 +826,7 @@ public abstract class MimeTypes {
     public static final String WAV = "wav";
     public static final String WB1 = "wb1";
     public static final String WBMP = "wbmp";
-    public static final String WEB = "web";
+    public static final String WEB = "routing";
     public static final String WIZ = "wiz";
     public static final String WK1 = "wk1";
     public static final String WMF = "wmf";

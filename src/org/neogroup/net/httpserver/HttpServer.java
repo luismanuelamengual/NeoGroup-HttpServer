@@ -8,10 +8,18 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.logging.Logger;
 
 public class HttpServer {
+
+    public static final String CONNECTION_REGISTER_MESSAGE = "Connection \"{0}\" registered !!";
+    public static final String CONNECTION_REREGISTER_MESSAGE = "Connection \"{0}\" re-registered !!";
+    public static final String CONNECTION_UNREGISTER_MESSAGE = "Connection \"{0}\" deleted !!";
+    public static final String CONNECTION_START_MESSAGE = "Connection \"{0}\" started !!";
+    public static final String CONNECTION_END_MESSAGE = "Connection \"{0}\" ended !!";
 
     public static final String SERVER_NAME = "NeoGroup-HttpServer";
 
@@ -23,6 +31,8 @@ public class HttpServer {
     private ServerSocketChannel serverChannel;
     private Executor executor;
     private ServerHandler serverHandler;
+    private Logger logger;
+    private boolean loggingEnabled;
     private boolean running;
     private Set<HttpContext> contexts;
     private Set<HttpConnection> idleConnections;
@@ -50,13 +60,15 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            logger = null;
+            loggingEnabled = false;
             contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
             idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             runningConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             lastConnectionCheckoutTimestamp = System.currentTimeMillis();
         } catch (Exception ex) {
-            throw new RuntimeException("Error creating HttpServer", ex);
+            throw new HttpException("Error creating HttpServer", ex);
         }
     }
 
@@ -74,6 +86,22 @@ public class HttpServer {
 
     public void removeContext (HttpContext context) {
         contexts.remove(context);
+    }
+
+    public Logger getLogger() {
+        return logger;
+    }
+
+    public void setLogger(Logger logger) {
+        this.logger = logger;
+    }
+
+    public boolean isLoggingEnabled() {
+        return loggingEnabled;
+    }
+
+    public void setLoggingEnabled(boolean loggingEnabled) {
+        this.loggingEnabled = loggingEnabled;
     }
 
     public void start() {
@@ -113,13 +141,15 @@ public class HttpServer {
                             HttpConnection connection = iterator.next();
                             try {
                                 SocketChannel clientChannel = connection.getChannel();
-                                System.out.println("RE-REGISTER " + connection.toString());
                                 clientChannel.configureBlocking(false);
                                 SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                 clientReadKey.attach(connection);
                                 connection.setRegistrationTimestamp(System.currentTimeMillis());
                                 iterator.remove();
                                 idleConnections.add(connection);
+                                if (loggingEnabled && logger != null) {
+                                    logger.fine(MessageFormat.format(CONNECTION_REREGISTER_MESSAGE, connection.toString()));
+                                }
                             }
                             catch (Exception ex) {}
                         }
@@ -133,8 +163,10 @@ public class HttpServer {
                                 HttpConnection connection = iterator.next();
                                 if ((time - connection.getRegistrationTimestamp()) > MAX_IDLE_CONNECTION_INTERVAL) {
                                     connection.close();
-                                    System.out.println ("DELETE " + connection.toString());
                                     iterator.remove();
+                                    if (loggingEnabled && logger != null) {
+                                        logger.fine(MessageFormat.format(CONNECTION_UNREGISTER_MESSAGE, connection.toString()));
+                                    }
                                 }
                             }
                         }
@@ -151,18 +183,19 @@ public class HttpServer {
                                 if (key.isAcceptable()) {
                                     SocketChannel clientChannel = serverChannel.accept();
                                     HttpConnection connection = new HttpConnection(clientChannel);
-                                    System.out.println("REGISTER " + connection.toString());
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(connection);
                                     connection.setRegistrationTimestamp(System.currentTimeMillis());
                                     idleConnections.add(connection);
+                                    if (loggingEnabled && logger != null) {
+                                        logger.fine(MessageFormat.format(CONNECTION_REGISTER_MESSAGE, connection.toString()));
+                                    }
                                 }
                                 else if (key.isReadable()) {
                                     SocketChannel clientChannel = (SocketChannel)key.channel();
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
-                                    System.out.println("READ " + connection.toString());
                                     idleConnections.remove(connection);
                                     runningConnections.add(connection);
                                     executor.execute(new ClientHandler(connection));
@@ -190,6 +223,10 @@ public class HttpServer {
 
             boolean closeConnection = true;
 
+            if (loggingEnabled && logger != null) {
+                logger.fine(MessageFormat.format(CONNECTION_START_MESSAGE, connection.toString()));
+            }
+
             //Obtención de la petición y la respuesta de la conexión
             HttpRequest request = connection.getRequest();
             HttpResponse response = connection.getResponse();
@@ -202,8 +239,6 @@ public class HttpServer {
                     completeRequest = true;
                 }
                 catch (HttpBadRequestException badRequestException) {}
-
-                System.out.println("REQUEST " + connection.toString() + ": " + request.getPath());
 
                 //Iniciar una respuesta nueva
                 response.startNewResponse();
@@ -266,6 +301,10 @@ public class HttpServer {
                     readyConnections.add(connection);
                     selector.wakeup();
                 }
+            }
+
+            if (loggingEnabled && logger != null) {
+                logger.fine(MessageFormat.format(CONNECTION_END_MESSAGE, connection.toString()));
             }
         }
     }
