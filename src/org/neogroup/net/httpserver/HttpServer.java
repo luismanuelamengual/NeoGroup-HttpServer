@@ -11,15 +11,15 @@ import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class HttpServer {
 
-    public static final String CONNECTION_REGISTER_MESSAGE = "Connection \"{0}\" registered !!";
-    public static final String CONNECTION_REREGISTER_MESSAGE = "Connection \"{0}\" re-registered !!";
-    public static final String CONNECTION_UNREGISTER_MESSAGE = "Connection \"{0}\" deleted !!";
-    public static final String CONNECTION_START_MESSAGE = "Connection \"{0}\" started !!";
-    public static final String CONNECTION_END_MESSAGE = "Connection \"{0}\" ended !!";
+    public static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
+    public static final String CONNECTION_DESTROYED_MESSAGE = "Connection \"{0}\" destroyed !!";
+    public static final String CONNECTION_REQUEST_RECEIVED_MESSAGE = "Connection \"{0}\" recevied request \"{1}\"";
 
     public static final String SERVER_NAME = "NeoGroup-HttpServer";
 
@@ -60,7 +60,11 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-            logger = null;
+            logger = Logger.getLogger(SERVER_NAME);
+            logger.setLevel(Level.ALL);
+            ConsoleHandler consoleHandler = new ConsoleHandler();
+            consoleHandler.setLevel(Level.ALL);
+            logger.addHandler(consoleHandler);
             loggingEnabled = false;
             contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
             idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
@@ -124,6 +128,12 @@ public class HttpServer {
         }
     }
 
+    private void log (Level level, String message, Object ... arguments) {
+        if (loggingEnabled && logger != null) {
+            logger.log(level, MessageFormat.format(message, arguments));
+        }
+    }
+
     private class ServerHandler implements Runnable {
 
         @Override
@@ -147,9 +157,6 @@ public class HttpServer {
                                 connection.setRegistrationTimestamp(System.currentTimeMillis());
                                 iterator.remove();
                                 idleConnections.add(connection);
-                                if (loggingEnabled && logger != null) {
-                                    logger.fine(MessageFormat.format(CONNECTION_REREGISTER_MESSAGE, connection.toString()));
-                                }
                             }
                             catch (Exception ex) {}
                         }
@@ -164,9 +171,7 @@ public class HttpServer {
                                 if ((time - connection.getRegistrationTimestamp()) > MAX_IDLE_CONNECTION_INTERVAL) {
                                     connection.close();
                                     iterator.remove();
-                                    if (loggingEnabled && logger != null) {
-                                        logger.fine(MessageFormat.format(CONNECTION_UNREGISTER_MESSAGE, connection.toString()));
-                                    }
+                                    log(Level.FINE, CONNECTION_DESTROYED_MESSAGE, connection);
                                 }
                             }
                         }
@@ -188,9 +193,7 @@ public class HttpServer {
                                     clientReadKey.attach(connection);
                                     connection.setRegistrationTimestamp(System.currentTimeMillis());
                                     idleConnections.add(connection);
-                                    if (loggingEnabled && logger != null) {
-                                        logger.fine(MessageFormat.format(CONNECTION_REGISTER_MESSAGE, connection.toString()));
-                                    }
+                                    log(Level.FINE, CONNECTION_CREATED_MESSAGE, connection);
                                 }
                                 else if (key.isReadable()) {
                                     SocketChannel clientChannel = (SocketChannel)key.channel();
@@ -223,10 +226,6 @@ public class HttpServer {
 
             boolean closeConnection = true;
 
-            if (loggingEnabled && logger != null) {
-                logger.fine(MessageFormat.format(CONNECTION_START_MESSAGE, connection.toString()));
-            }
-
             //Obtención de la petición y la respuesta de la conexión
             HttpRequest request = connection.getRequest();
             HttpResponse response = connection.getResponse();
@@ -239,6 +238,7 @@ public class HttpServer {
                     completeRequest = true;
                 }
                 catch (HttpBadRequestException badRequestException) {}
+                log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
 
                 //Iniciar una respuesta nueva
                 response.startNewResponse();
@@ -301,10 +301,6 @@ public class HttpServer {
                     readyConnections.add(connection);
                     selector.wakeup();
                 }
-            }
-
-            if (loggingEnabled && logger != null) {
-                logger.fine(MessageFormat.format(CONNECTION_END_MESSAGE, connection.toString()));
             }
         }
     }

@@ -67,4 +67,15 @@ public class HttpConnection {
             closed = true;
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuffer str = new StringBuffer();
+        str.append("Connection[");
+        str.append(channel.socket().getInetAddress().getHostAddress());
+        str.append(":");
+        str.append(channel.socket().getPort());
+        str.append("]");
+        return str.toString();
+    }
 }
