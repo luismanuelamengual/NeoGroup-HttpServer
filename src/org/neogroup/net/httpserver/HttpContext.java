@@ -13,5 +13,5 @@ public abstract class HttpContext {
         return path;
     }
 
-    public abstract void onContext (HttpRequest request, HttpResponse response);
+    public abstract HttpResponse onContext (HttpRequest request);
 }

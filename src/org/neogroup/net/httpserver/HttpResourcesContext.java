@@ -43,34 +43,37 @@ public class HttpResourcesContext extends HttpContext {
     }
 
     @Override
-    public void onContext(HttpRequest request, HttpResponse response) {
+    public HttpResponse onContext(HttpRequest request) {
 
         String path = request.getPath().substring(getPath().length());
         String resourceName = resourcesPath + path.replaceAll(URI_FOLDER_SEPARATOR, File.separator);
+        HttpResponse response;
 
         if (isClassPathResource) {
             byte[] resourceBytes = getResourceBytes(resourceName);
             if (resourceBytes != null) {
-                handleResourceResponse(request, response, resourceBytes, MimeTypes.getMimeType(resourceName), null);
+                response = handleResourceResponse(request, resourceBytes, MimeTypes.getMimeType(resourceName), null);
             } else {
-                handleResourceNotFoundResponse(request, response, resourceName);
+                response = handleResourceNotFoundResponse(request, resourceName);
             }
         }
         else {
             File file = new File(resourceName);
             if (file.exists()) {
                 if (file.isDirectory()) {
-                    handleDirectoryResponse(request, response, file);
+                    response = handleDirectoryResponse(request, file);
                 } else {
-                    handleFileResponse(request, response, file);
+                    response = handleFileResponse(request, file);
                 }
             } else {
-                handleResourceNotFoundResponse(request, response, file.toString());
+                response = handleResourceNotFoundResponse(request, file.toString());
             }
         }
+
+        return response;
     }
 
-    protected void handleDirectoryResponse (HttpRequest request, HttpResponse response, File file) {
+    protected HttpResponse handleDirectoryResponse (HttpRequest request, File file) {
 
         StringBuilder list = new StringBuilder();
         Path filePath = file.toPath();
@@ -87,11 +90,14 @@ public class HttpResourcesContext extends HttpContext {
         }
         String htmlBody = String.format(FOLDER_HTML_LIST_TEMPLATE, list.toString());
         String document = String.format(FOLDER_HTML_DOCUMENT_TEMPLATE, file.getName(), htmlBody);
+
+        HttpResponse response = new HttpResponse();
         response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
         response.setBody(document.getBytes());
+        return response;
     }
 
-    protected void handleFileResponse (HttpRequest request, HttpResponse response, File file) {
+    protected HttpResponse handleFileResponse (HttpRequest request, File file) {
 
         byte[] fileBytes = null;
         try {
@@ -103,13 +109,15 @@ public class HttpResourcesContext extends HttpContext {
 
         Date lastModifiedDate = new Date(file.lastModified());
         String mimeType = MimeTypes.getMimeType(file);
-        handleResourceResponse(request, response, fileBytes, mimeType, lastModifiedDate);
+        return handleResourceResponse(request, fileBytes, mimeType, lastModifiedDate);
     }
 
-    protected void handleResourceNotFoundResponse (HttpRequest request, HttpResponse response, String resourceName) {
+    protected HttpResponse handleResourceNotFoundResponse (HttpRequest request, String resourceName) {
 
+        HttpResponse response = new HttpResponse();
         response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
         response.setBody("Resource \"" + resourceName + "\" not found !!");
+        return response;
     }
 
     protected byte[] getResourceBytes (String resourceName) {
@@ -131,7 +139,7 @@ public class HttpResourcesContext extends HttpContext {
         return resourceBytes;
     }
 
-    protected void handleResourceResponse (HttpRequest request, HttpResponse response, byte[] resourceBytes, String mimeType, Date lastModifiedDate) {
+    protected HttpResponse handleResourceResponse (HttpRequest request, byte[] resourceBytes, String mimeType, Date lastModifiedDate) {
 
         String checksum = null;
         try {
@@ -162,6 +170,7 @@ public class HttpResourcesContext extends HttpContext {
             }
         }
 
+        HttpResponse response = new HttpResponse();
         response.setResponseCode(responseCode);
         response.addHeader(HttpHeader.CONTENT_TYPE, mimeType);
         response.addHeader(HttpHeader.E_TAG, checksum);
@@ -186,5 +195,7 @@ public class HttpResourcesContext extends HttpContext {
             }
             response.setBody(resourceBytes);
         }
+
+        return response;
     }
 }

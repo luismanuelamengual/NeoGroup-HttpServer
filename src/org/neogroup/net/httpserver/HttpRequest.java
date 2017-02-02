@@ -31,19 +31,14 @@ public class HttpRequest {
     private boolean parametersParsed;
     private byte[] body;
 
+    public HttpRequest () {
+        this(HttpConnection.getActiveConnection());
+    }
+
     public HttpRequest (HttpConnection connection) {
         this.connection = connection;
         this.headers = new HashMap<>();
         this.parameters = new HashMap<>();
-    }
-
-    public void startNewRequest () {
-
-        method = null;
-        uri = null;
-        version = null;
-        headers.clear();
-        parameters.clear();
         parametersParsed = false;
 
         //Leer una peticion nueva

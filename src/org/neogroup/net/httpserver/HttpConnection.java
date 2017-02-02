@@ -2,20 +2,37 @@
 package org.neogroup.net.httpserver;
 
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
+import java.util.Map;
 
 public class HttpConnection {
 
     private final SocketChannel channel;
-    private final HttpRequest request;
-    private final HttpResponse response;
     private boolean closed;
+    private boolean autoClose;
     private long creationTimestamp;
     private long regsitrationTimestamp;
+    private static final Map<Long, HttpConnection> activeConnections;
+
+    static {
+        activeConnections = new HashMap<>();
+    }
+
+    public static void setActiveConnection (HttpConnection connection) {
+        if (connection != null) {
+            activeConnections.put(Thread.currentThread().getId(), connection);
+        }
+        else {
+            activeConnections.remove(Thread.currentThread().getId());
+        }
+    }
+
+    public static HttpConnection getActiveConnection () {
+        return activeConnections.get(Thread.currentThread().getId());
+    }
 
     public HttpConnection(SocketChannel channel) {
         this.channel = channel;
-        request = new HttpRequest(this);
-        response = new HttpResponse(this);
         closed = false;
         long timestamp = System.currentTimeMillis();
         creationTimestamp = timestamp;
@@ -24,14 +41,6 @@ public class HttpConnection {
 
     public SocketChannel getChannel() {
         return channel;
-    }
-
-    public HttpRequest getRequest () {
-        return request;
-    }
-
-    public HttpResponse getResponse() {
-        return response;
     }
 
     public boolean isClosed() {
@@ -48,6 +57,14 @@ public class HttpConnection {
 
     public void setRegistrationTimestamp(long registrationTimestamp) {
         this.regsitrationTimestamp = registrationTimestamp;
+    }
+
+    public boolean isAutoClose() {
+        return autoClose;
+    }
+
+    public void setAutoClose(boolean autoClose) {
+        this.autoClose = autoClose;
     }
 
     public synchronized void close() {

@@ -14,8 +14,10 @@ public class Main {
         server.setExecutor(Executors.newCachedThreadPool());
         server.addContext(new HttpContext("/test/") {
             @Override
-            public void onContext(HttpRequest request, HttpResponse response) {
+            public HttpResponse onContext(HttpRequest request) {
+                HttpResponse response = new HttpResponse();
                 response.write(MessageFormat.format(WELCOME_PHRASE, request.getParameter("name")));
+                return response;
             }
         });
         server.addContext(new HttpResourcesContext("/resources/", "/home/luis/git/sitrackfrontend/public/"));

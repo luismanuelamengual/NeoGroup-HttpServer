@@ -34,10 +34,10 @@ public class HttpServer {
     private Logger logger;
     private boolean loggingEnabled;
     private boolean running;
-    private Set<HttpContext> contexts;
-    private Set<HttpConnection> idleConnections;
-    private Set<HttpConnection> runningConnections;
-    private Set<HttpConnection> readyConnections;
+    private final Set<HttpContext> contexts;
+    private final Set<HttpConnection> idleConnections;
+    private final Set<HttpConnection> runningConnections;
+    private final Set<HttpConnection> readyConnections;
     private long lastConnectionCheckoutTimestamp;
 
     public HttpServer() {
@@ -224,39 +224,19 @@ public class HttpServer {
         @Override
         public void run() {
 
-            boolean closeConnection = true;
+            connection.setAutoClose(true);
 
             //Obtención de la petición y la respuesta de la conexión
-            HttpRequest request = connection.getRequest();
-            HttpResponse response = connection.getResponse();
-
+            HttpConnection.setActiveConnection(connection);
             try {
-                //Iniciar una petición nueva
-                boolean completeRequest = false;
                 try {
-                    request.startNewRequest();
-                    completeRequest = true;
-                }
-                catch (HttpBadRequestException badRequestException) {}
-                log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
+                    //Iniciar una petición nueva
+                    HttpRequest request = new HttpRequest(connection);
+                    log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
 
-                //Iniciar una respuesta nueva
-                response.startNewResponse();
-                response.addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
-                response.addHeader(HttpHeader.SERVER, SERVER_NAME);
-
-                if (!completeRequest) {
-                    response.setResponseCode(HttpResponseCode.HTTP_BAD_REQUEST);
-                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
-                    response.setBody("Bad request !!");
-                }
-                else {
                     String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
                     if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
-                        response.addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
-                        closeConnection = false;
-                    } else {
-                        response.addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
+                        connection.setAutoClose(false);
                     }
 
                     //Ejecutar el contexto que coincida con el path de la petición
@@ -270,32 +250,43 @@ public class HttpServer {
 
                     if (matchContext != null) {
                         try {
-                            matchContext.onContext(request, response);
+                            HttpResponse response = matchContext.onContext(request);
+                            response.flush();
                         }
                         catch (Throwable contextException) {
+                            HttpResponse response = new HttpResponse(connection);
                             response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
                             response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
                             response.setBody("Error processing context request path " + request.getPath() + "\". Error: " + contextException.toString());
+                            response.flush();
                         }
                     } else {
+                        HttpResponse response = new HttpResponse(connection);
                         response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
                         response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
                         response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
+                        response.flush();
                     }
                 }
-
-                //Escribir datos que hayan quedado almacenados en la respuesta http
-                response.flush();
+                catch (HttpBadRequestException badRequestException) {
+                    HttpResponse response = new HttpResponse(connection);
+                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                    response.setBody("Bad request !!");
+                    response.flush();
+                }
             }
             catch (Throwable ex) {
-                closeConnection = true;
+                connection.setAutoClose(true);
+            }
+            finally {
+                HttpConnection.setActiveConnection(null);
             }
 
             runningConnections.remove(connection);
 
             //Cerrar la conexión
             if (!connection.isClosed()) {
-                if (closeConnection) {
+                if (connection.isAutoClose()) {
                     connection.close();
                 } else {
                     readyConnections.add(connection);

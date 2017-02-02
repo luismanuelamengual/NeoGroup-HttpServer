@@ -1,3 +1,4 @@
+
 package org.neogroup.net.httpserver;
 
 import org.neogroup.util.MimeTypes;
@@ -5,6 +6,7 @@ import org.neogroup.util.MimeTypes;
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,17 +25,16 @@ public class HttpResponse {
     private int bodySize;
     private boolean headersSent;
 
+    public HttpResponse () {
+        this(HttpConnection.getActiveConnection());
+    }
+
     public HttpResponse(HttpConnection connection) {
         this.connection = connection;
         this.headers = new HashMap<>();
         this.bodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
-    }
-
-    public void startNewResponse() {
         responseCode = HttpResponseCode.HTTP_OK;
-        headers.clear();
         headersSent = false;
-        bodyBuffer.clear();
         bodySize = 0;
     }
 
@@ -107,6 +108,14 @@ public class HttpResponse {
 
     private void sendHeaders () {
         if (!headersSent) {
+            addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
+            addHeader(HttpHeader.SERVER, HttpServer.SERVER_NAME);
+            if (connection.isAutoClose()) {
+                addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
+            }
+            else {
+                addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
+            }
             if (!hasHeader(HttpHeader.CONTENT_TYPE)) {
                 addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
             }
