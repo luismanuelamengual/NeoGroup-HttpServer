@@ -1,4 +1,4 @@
-package org.neogroup.net.httpserver;
+package org.neogroup.httpserver;
 
 public final class HttpResponseCode {
 

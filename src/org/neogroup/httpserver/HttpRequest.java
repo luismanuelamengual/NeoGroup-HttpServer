@@ -1,5 +1,5 @@
 
-package org.neogroup.net.httpserver;
+package org.neogroup.httpserver;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;

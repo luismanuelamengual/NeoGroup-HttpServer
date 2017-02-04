@@ -1,5 +1,5 @@
 
-package org.neogroup.net.httpserver;
+package org.neogroup.httpserver;
 
 import org.neogroup.util.MimeTypes;
 import org.neogroup.util.encoding.GZIPCompression;
