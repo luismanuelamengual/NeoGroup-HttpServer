@@ -1,5 +1,8 @@
 
-package org.neogroup.httpserver;
+package org.neogroup.httpserver.contexts;
+
+import org.neogroup.httpserver.HttpRequest;
+import org.neogroup.httpserver.HttpResponse;
 
 public abstract class HttpContext {
 

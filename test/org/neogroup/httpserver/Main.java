@@ -1,6 +1,10 @@
 
 package org.neogroup.httpserver;
 
+import org.neogroup.httpserver.contexts.HttpContext;
+import org.neogroup.httpserver.contexts.HttpFolderContext;
+import org.neogroup.httpserver.contexts.HttpResourcesContext;
+
 import java.text.MessageFormat;
 import java.util.concurrent.Executors;
 
@@ -20,8 +24,8 @@ public class Main {
                 return response;
             }
         });
-        server.addContext(new HttpResourcesContext("/resources/", "/home/luis/git/sitrackfrontend/public/"));
-        server.addContext(new HttpResourcesContext("/jar_resources/", "resource:/"));
+        server.addContext(new HttpFolderContext("/resources/", "/home/luis/git/sitracksite/public/"));
+        server.addContext(new HttpResourcesContext("/jar/" ));
         server.start();
     }
 }

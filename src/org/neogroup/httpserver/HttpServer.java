@@ -1,6 +1,7 @@
 
 package org.neogroup.httpserver;
 
+import org.neogroup.httpserver.contexts.HttpContext;
 import org.neogroup.util.MimeTypes;
 
 import java.net.InetSocketAddress;
