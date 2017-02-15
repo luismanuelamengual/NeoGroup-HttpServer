@@ -5,8 +5,10 @@ import org.neogroup.httpserver.*;
 import org.neogroup.util.MimeTypes;
 import org.neogroup.util.encoding.GZIPCompression;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,14 +23,20 @@ public class HttpFolderContext extends HttpContext {
 
     private static final String DEFAULT_DIGEST_ENCRYPTION = "MD5";
     private static final String URI_FOLDER_SEPARATOR = "/";
+    private static final String CLASS_PATH_PREFIX = "${classpath}";
     private static final String FOLDER_HTML_DOCUMENT_TEMPLATE = "<!DOCTYPE html><html><head><title>%s</title><body>%s</body></html></head>";
     private static final String FOLDER_HTML_LIST_TEMPLATE = "<ul style=\"list-style-type: none;\">%s</ul>";
     private static final String FOLDER_HTML_ITEM_TEMPLATE = "<li><a href=\"%s\">%s</a></li>";
 
     protected final String folder;
+    protected final boolean isClasspathFolder;
 
     public HttpFolderContext(String path, String folder) {
         super(path);
+        this.isClasspathFolder = folder.startsWith(CLASS_PATH_PREFIX);
+        if (this.isClasspathFolder) {
+            folder = folder.substring(CLASS_PATH_PREFIX.length() + 1);
+        }
         this.folder = folder;
     }
 
@@ -39,15 +47,25 @@ public class HttpFolderContext extends HttpContext {
         String fileName = folder + path.replaceAll(URI_FOLDER_SEPARATOR, File.separator);
 
         HttpResponse response;
-        File file = new File(fileName);
-        if (file.exists()) {
-            if (file.isDirectory()) {
-                response = handleDirectoryResponse(request, file);
+        if (isClasspathFolder) {
+            byte[] resourceBytes = getResourceBytes(fileName);
+            if (resourceBytes != null) {
+                response = handleFileResponse(request, resourceBytes, MimeTypes.getMimeType(fileName), null);
             } else {
-                response = handleFileResponse(request, file);
+                response = handleResourceNotFoundResponse(request, fileName);
             }
-        } else {
-            response = handleFileNotFoundResponse(request, file);
+        }
+        else {
+            File file = new File(fileName);
+            if (file.exists()) {
+                if (file.isDirectory()) {
+                    response = handleDirectoryResponse(request, file);
+                } else {
+                    response = handleFileResponse(request, file);
+                }
+            } else {
+                response = handleFileNotFoundResponse(request, file);
+            }
         }
         return response;
     }
@@ -73,6 +91,33 @@ public class HttpFolderContext extends HttpContext {
         HttpResponse response = new HttpResponse();
         response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
         response.setBody(document.getBytes());
+        return response;
+    }
+
+    protected byte[] getResourceBytes (String resourceName) {
+
+        byte[] resourceBytes = null;
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourceName);
+        if (inputStream != null) {
+            try (ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+                int nRead;
+                byte[] data = new byte[1024];
+                while ((nRead = inputStream.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, nRead);
+                }
+                buffer.flush();
+                resourceBytes = buffer.toByteArray();
+            }
+            catch (Exception ex) {}
+        }
+        return resourceBytes;
+    }
+
+    protected HttpResponse handleResourceNotFoundResponse (HttpRequest request, String resourceName) {
+
+        HttpResponse response = new HttpResponse();
+        response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
+        response.setBody("Resource \"" + resourceName + "\" not found !!");
         return response;
     }
 
