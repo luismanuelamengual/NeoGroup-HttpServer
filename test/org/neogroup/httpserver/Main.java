@@ -4,8 +4,6 @@ package org.neogroup.httpserver;
 import org.neogroup.httpserver.contexts.HttpContext;
 import org.neogroup.httpserver.contexts.HttpFolderContext;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.concurrent.Executors;
 
@@ -15,11 +13,7 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Path currentRelativePath = Paths.get("");
-        String s = currentRelativePath.toAbsolutePath().toString();
-        System.out.println (s);
-
-        /*HttpServer server = new HttpServer(1408);
+        HttpServer server = new HttpServer(1408);
         server.setExecutor(Executors.newCachedThreadPool());
         server.addContext(new HttpContext("/test/") {
             @Override
@@ -30,7 +24,7 @@ public class Main {
             }
         });
         server.addContext(new HttpFolderContext("/resources/", "/home/luis/git/sitracksite/public/"));
-        server.addContext(new HttpFolderContext("/jar/", "${classpath}/"));
-        server.start();*/
+        server.addContext(new HttpFolderContext("/jar/", "${classPath}/"));
+        server.start();
     }
 }

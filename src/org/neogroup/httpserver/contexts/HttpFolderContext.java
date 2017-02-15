@@ -21,9 +21,10 @@ import java.util.Date;
 
 public class HttpFolderContext extends HttpContext {
 
+    private static final String CLASS_PATH_PREFIX = "${classPath}";
+    private static final String CURRENT_PATH_PREFIX = "${currentPath}";
     private static final String DEFAULT_DIGEST_ENCRYPTION = "MD5";
     private static final String URI_FOLDER_SEPARATOR = "/";
-    private static final String CLASS_PATH_PREFIX = "${classpath}";
     private static final String FOLDER_HTML_DOCUMENT_TEMPLATE = "<!DOCTYPE html><html><head><title>%s</title><body>%s</body></html></head>";
     private static final String FOLDER_HTML_LIST_TEMPLATE = "<ul style=\"list-style-type: none;\">%s</ul>";
     private static final String FOLDER_HTML_ITEM_TEMPLATE = "<li><a href=\"%s\">%s</a></li>";
@@ -33,11 +34,19 @@ public class HttpFolderContext extends HttpContext {
 
     public HttpFolderContext(String path, String folder) {
         super(path);
-        this.isClasspathFolder = folder.startsWith(CLASS_PATH_PREFIX);
-        if (this.isClasspathFolder) {
-            folder = folder.substring(CLASS_PATH_PREFIX.length() + 1);
+        if (folder.startsWith(CLASS_PATH_PREFIX)) {
+            this.isClasspathFolder = true;
+            this.folder = folder.substring(CLASS_PATH_PREFIX.length() + 1);
         }
-        this.folder = folder;
+        else {
+            this.isClasspathFolder = false;
+            if (folder.startsWith(CURRENT_PATH_PREFIX)) {
+                this.folder = Paths.get("").toAbsolutePath().toString() + folder.substring(CURRENT_PATH_PREFIX.length());
+            }
+            else {
+                this.folder = folder;
+            }
+        }
     }
 
     @Override
