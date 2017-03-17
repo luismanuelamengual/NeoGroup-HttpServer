@@ -155,7 +155,7 @@ public class HttpResponse {
         }
     }
 
-    private void writeBuffer() {
+    protected void writeBuffer() {
 
         sendHeaders();
         bodyBuffer.flip();
