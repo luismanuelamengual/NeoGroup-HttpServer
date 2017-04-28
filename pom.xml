@@ -24,6 +24,12 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>scm:git:git@github.com:luismanuelamengual/NeoGroup-HttpServer.git</connection>
+        <developerConnection>scm:git:git@github.com:luismanuelamengual/NeoGroup-HttpServer.git</developerConnection>
+        <url>scm:git:git@github.com:luismanuelamengual/NeoGroup-HttpServer.git</url>
+    </scm>
+
     <dependencies>
         <dependency>
             <groupId>org.neogroup</groupId>
