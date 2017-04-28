@@ -8,6 +8,14 @@
     <artifactId>NeoGroup-HttpServer</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.neogroup</groupId>
+            <artifactId>NeoGroup-Utils</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
