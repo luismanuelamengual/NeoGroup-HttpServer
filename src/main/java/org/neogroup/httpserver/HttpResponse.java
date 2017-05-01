@@ -1,7 +1,7 @@
 
 package org.neogroup.httpserver;
 
-import org.neogroup.util.MimeTypes;
+import org.neogroup.httpserver.utils.MimeTypes;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;

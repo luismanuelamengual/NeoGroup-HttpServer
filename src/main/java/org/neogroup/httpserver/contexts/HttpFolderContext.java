@@ -2,8 +2,7 @@
 package org.neogroup.httpserver.contexts;
 
 import org.neogroup.httpserver.*;
-import org.neogroup.util.MimeTypes;
-import org.neogroup.util.encoding.GZIPCompression;
+import org.neogroup.httpserver.utils.MimeTypes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -18,6 +17,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.zip.GZIPOutputStream;
 
 public class HttpFolderContext extends HttpContext {
 
@@ -200,7 +200,12 @@ public class HttpFolderContext extends HttpContext {
                     try {
                         response.addHeader(HttpHeader.CONTENT_ENCODING, HttpHeader.GZIP_CONTENT_ENCODING);
                         response.addHeader(HttpHeader.VARY, HttpHeader.ACCEPT_ENCODING);
-                        resourceBytes = GZIPCompression.compress(resourceBytes);
+                        try (ByteArrayOutputStream bout = new ByteArrayOutputStream(); GZIPOutputStream gzipper = new GZIPOutputStream(bout))
+                        {
+                            gzipper.write(resourceBytes, 0, resourceBytes.length);
+                            gzipper.close();
+                            resourceBytes = bout.toByteArray();
+                        }
                     }
                     catch (IOException ex) {
                         throw new RuntimeException("Error compressing file !!", ex);
