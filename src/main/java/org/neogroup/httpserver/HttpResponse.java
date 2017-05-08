@@ -1,7 +1,7 @@
 
 package org.neogroup.httpserver;
 
-import org.neogroup.httpserver.utils.MimeTypes;
+import org.neogroup.util.MimeUtils;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
@@ -117,7 +117,7 @@ public class HttpResponse {
                 addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
             }
             if (!hasHeader(HttpHeader.CONTENT_TYPE)) {
-                addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
+                addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_HTML);
             }
             if (!hasHeader(HttpHeader.CONTENT_LENGTH)) {
                 addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(bodySize));

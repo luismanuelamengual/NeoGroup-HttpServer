@@ -12,6 +12,11 @@
     <description>Simple and fast HTTPServer</description>
 
     <dependencies>
+        <dependency>
+            <groupId>com.github.luismanuelamengual</groupId>
+            <artifactId>NeoGroup-Utils</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <scm>

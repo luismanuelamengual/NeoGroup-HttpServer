@@ -2,7 +2,7 @@
 package org.neogroup.httpserver.contexts;
 
 import org.neogroup.httpserver.*;
-import org.neogroup.httpserver.utils.MimeTypes;
+import org.neogroup.util.MimeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -59,7 +59,7 @@ public class HttpFolderContext extends HttpContext {
         if (isClasspathFolder) {
             byte[] resourceBytes = getResourceBytes(fileName);
             if (resourceBytes != null) {
-                response = handleFileResponse(request, resourceBytes, MimeTypes.getMimeType(fileName), null);
+                response = handleFileResponse(request, resourceBytes, MimeUtils.getMimeType(fileName), null);
             } else {
                 response = handleResourceNotFoundResponse(request, fileName);
             }
@@ -98,7 +98,7 @@ public class HttpFolderContext extends HttpContext {
         String document = String.format(FOLDER_HTML_DOCUMENT_TEMPLATE, file.getName(), htmlBody);
 
         HttpResponse response = new HttpResponse();
-        response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_HTML);
+        response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_HTML);
         response.setBody(document.getBytes());
         return response;
     }
@@ -149,7 +149,7 @@ public class HttpFolderContext extends HttpContext {
         }
 
         Date lastModifiedDate = new Date(file.lastModified());
-        String mimeType = MimeTypes.getMimeType(file);
+        String mimeType = MimeUtils.getMimeType(file);
         return handleFileResponse(request, fileBytes, mimeType, lastModifiedDate);
     }
 

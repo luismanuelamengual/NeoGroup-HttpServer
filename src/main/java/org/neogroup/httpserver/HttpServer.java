@@ -2,7 +2,7 @@
 package org.neogroup.httpserver;
 
 import org.neogroup.httpserver.contexts.HttpContext;
-import org.neogroup.httpserver.utils.MimeTypes;
+import org.neogroup.util.MimeUtils;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
@@ -10,7 +10,10 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -257,21 +260,21 @@ public class HttpServer {
                         catch (Throwable contextException) {
                             HttpResponse response = new HttpResponse(connection);
                             response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
-                            response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                            response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
                             response.setBody("Error processing context request path " + request.getPath() + "\". Error: " + contextException.toString());
                             response.flush();
                         }
                     } else {
                         HttpResponse response = new HttpResponse(connection);
                         response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
-                        response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                        response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
                         response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
                         response.flush();
                     }
                 }
                 catch (HttpBadRequestException badRequestException) {
                     HttpResponse response = new HttpResponse(connection);
-                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeTypes.TEXT_PLAIN);
+                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
                     response.setBody("Bad request !!");
                     response.flush();
                 }
