@@ -23,7 +23,7 @@ public class Main {
                 return response;
             }
         });
-        server.addContext(new HttpFolderContext("/resources/", "/home/luis/git/sitracksite/public/"));
+        server.addContext(new HttpFolderContext("/resources/", "/home/luis/git/myproject/public/"));
         server.addContext(new HttpFolderContext("/jar/", "${classPath}/"));
         server.start();
     }
