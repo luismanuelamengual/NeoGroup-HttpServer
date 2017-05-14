@@ -19,6 +19,9 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.zip.GZIPOutputStream;
 
+/**
+ * Context to access to access files
+ */
 public class HttpFolderContext extends HttpContext {
 
     private static final String CLASS_PATH_PREFIX = "${classPath}";
@@ -32,6 +35,11 @@ public class HttpFolderContext extends HttpContext {
     protected final String folder;
     protected final boolean isClasspathFolder;
 
+    /**
+     * Constructor of the folder context
+     * @param path Path to access the context
+     * @param folder Folder that is accessed via the context
+     */
     public HttpFolderContext(String path, String folder) {
         super(path);
         if (folder.startsWith(CLASS_PATH_PREFIX)) {
@@ -49,6 +57,11 @@ public class HttpFolderContext extends HttpContext {
         }
     }
 
+    /**
+     * Method that is executed when accesing the context
+     * @param request Http request
+     * @return HttpResponse response
+     */
     @Override
     public HttpResponse onContext(HttpRequest request) {
 
@@ -79,6 +92,12 @@ public class HttpFolderContext extends HttpContext {
         return response;
     }
 
+    /**
+     * Handles a directory response
+     * @param request Http request
+     * @param file File pointing to a directory
+     * @return HttpResponse the response
+     */
     protected HttpResponse handleDirectoryResponse (HttpRequest request, File file) {
 
         StringBuilder list = new StringBuilder();
@@ -103,6 +122,11 @@ public class HttpFolderContext extends HttpContext {
         return response;
     }
 
+    /**
+     * Retrieves the bytes of a resource
+     * @param resourceName name of the resource
+     * @return byte[] bytes of the resource
+     */
     protected byte[] getResourceBytes (String resourceName) {
 
         byte[] resourceBytes = null;
@@ -122,6 +146,12 @@ public class HttpFolderContext extends HttpContext {
         return resourceBytes;
     }
 
+    /**
+     * Handles when a resource is not found
+     * @param request Http Request
+     * @param resourceName the resource name
+     * @return HttpResponse the response
+     */
     protected HttpResponse handleResourceNotFoundResponse (HttpRequest request, String resourceName) {
 
         HttpResponse response = new HttpResponse();
@@ -130,6 +160,12 @@ public class HttpFolderContext extends HttpContext {
         return response;
     }
 
+    /**
+     * Handles when a file is not found
+     * @param request Http Request
+     * @param file File that was not found
+     * @return HttpResponse the response
+     */
     protected HttpResponse handleFileNotFoundResponse (HttpRequest request, File file) {
 
         HttpResponse response = new HttpResponse();
@@ -138,6 +174,12 @@ public class HttpFolderContext extends HttpContext {
         return response;
     }
 
+    /**
+     * Handles a response of file content
+     * @param request Http Request
+     * @param file The file to show
+     * @return HttpResponse the response
+     */
     protected HttpResponse handleFileResponse (HttpRequest request, File file) {
 
         byte[] fileBytes = null;
@@ -153,6 +195,14 @@ public class HttpFolderContext extends HttpContext {
         return handleFileResponse(request, fileBytes, mimeType, lastModifiedDate);
     }
 
+    /**
+     * Handles a response of file content
+     * @param request Http Request
+     * @param resourceBytes bytes of the resource
+     * @param mimeType Mime type of the resource
+     * @param lastModifiedDate last date the resource was modified
+     * @return HttpResponse the response
+     */
     protected HttpResponse handleFileResponse(HttpRequest request, byte[] resourceBytes, String mimeType, Date lastModifiedDate) {
 
         String checksum = null;
