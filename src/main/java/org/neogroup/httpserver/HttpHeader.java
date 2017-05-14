@@ -34,6 +34,8 @@ public interface HttpHeader {
     public static final String E_TAG = "ETag";
     public static final String CACHE_CONTROL = "Cache-Control";
     public static final String EXPIRES = "Expires";
+    public static final String SET_COOKIE = "Set-Cookie";
+    public static final String COOKIE = "Cookie";
 
     //Header Values
     public static final String GZIP_CONTENT_ENCODING = "gzip";
