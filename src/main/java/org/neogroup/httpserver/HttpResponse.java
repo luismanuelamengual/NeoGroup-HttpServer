@@ -5,10 +5,7 @@ import org.neogroup.util.MimeUtils;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class HttpResponse {
 
@@ -20,7 +17,7 @@ public class HttpResponse {
 
     private final HttpConnection connection;
     private int responseCode;
-    private Map<String, String> headers;
+    private Map<String, List<String>> headers;
     private ByteBuffer bodyBuffer;
     private int bodySize;
     private boolean headersSent;
@@ -46,15 +43,29 @@ public class HttpResponse {
         this.responseCode = responseCode;
     }
 
-    public Map<String,String> getHeaders() {
+    public Map<String,List<String>> getHeaders() {
         return Collections.unmodifiableMap(headers);
     }
 
     public void addHeader(String headerName, String headerValue) {
-        this.headers.put(headerName, headerValue);
+        List<String> headerValues = headers.get(headerName);
+        if (headerValues == null) {
+            headerValues = new ArrayList<>();
+            headers.put(headerName, headerValues);
+        }
+        headerValues.add(headerValue);
     }
 
     public String getHeader (String headerName) {
+        String value = null;
+        List<String> headerValues = headers.get(headerName);
+        if (headerValues != null) {
+            value = headerValues.get(0);
+        }
+        return value;
+    }
+
+    public List<String> getHeaders (String headerName) {
         return headers.get(headerName);
     }
 
@@ -133,11 +144,13 @@ public class HttpResponse {
 
                 //Writing headers
                 for (String headerName : headers.keySet()) {
-                    String headerValue = headers.get(headerName);
-                    headersBuffer.clear();
-                    headersBuffer.put(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
-                    headersBuffer.flip();
-                    connection.getChannel().write(headersBuffer);
+                    List<String> headerValues = headers.get(headerName);
+                    for (String headerValue : headerValues) {
+                        headersBuffer.clear();
+                        headersBuffer.put(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
+                        headersBuffer.flip();
+                        connection.getChannel().write(headersBuffer);
+                    }
                 }
 
                 //Writing separator

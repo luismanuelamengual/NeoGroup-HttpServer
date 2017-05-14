@@ -15,6 +15,17 @@ public class Main {
 
         HttpServer server = new HttpServer(1408);
         server.setExecutor(Executors.newCachedThreadPool());
+
+        server.addContext(new HttpContext("/cookie/") {
+            @Override
+            public HttpResponse onContext(HttpRequest request) {
+                HttpResponse response = new HttpResponse();
+                response.addHeader("Set-Cookie", "pepe=rama");
+                response.addHeader("Set-Cookie", "tito=cantach");
+                response.write("Cookies set");
+                return response;
+            }
+        });
         server.addContext(new HttpContext("/test/") {
             @Override
             public HttpResponse onContext(HttpRequest request) {
