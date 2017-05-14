@@ -19,6 +19,9 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Http Server
+ */
 public class HttpServer {
 
     public static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
@@ -44,10 +47,18 @@ public class HttpServer {
     private final Set<HttpConnection> readyConnections;
     private long lastConnectionCheckoutTimestamp;
 
+    /**
+     * Default constructor for the http server. By default the server
+     * listens at port 80
+     */
     public HttpServer() {
         this(DEFAULT_PORT);
     }
 
+    /**
+     * Constructor for the http server listening at a given port
+     * @param port Port for the http server to listen
+     */
     public HttpServer(int port) {
 
         try {
@@ -80,38 +91,73 @@ public class HttpServer {
         }
     }
 
+    /**
+     * Retrieves the thread executor for the http server
+     * @return Thread executor
+     */
     public Executor getExecutor() {
         return executor;
     }
 
+    /**
+     * Sets the thread executor for the http server
+     * @param executor Thread executor
+     */
     public void setExecutor(Executor executor) {
         this.executor = executor;
     }
 
+    /**
+     * Adds a new Http Context
+     * @param context Context to add
+     */
     public void addContext (HttpContext context) {
         contexts.add(context);
     }
 
+    /**
+     * Removes an http context
+     * @param context Context to remove
+     */
     public void removeContext (HttpContext context) {
         contexts.remove(context);
     }
 
+    /**
+     * Retrieves the logger of the server
+     * @return Logger
+     */
     public Logger getLogger() {
         return logger;
     }
 
+    /**
+     * Sets the logger of the server
+     * @param logger logger
+     */
     public void setLogger(Logger logger) {
         this.logger = logger;
     }
 
+    /**
+     * Indicates where logging is enabled or not
+     * @return boolean
+     */
     public boolean isLoggingEnabled() {
         return loggingEnabled;
     }
 
+    /**
+     * Sets where logging is enabled or not
+     * @param loggingEnabled logging enabled
+     */
     public void setLoggingEnabled(boolean loggingEnabled) {
         this.loggingEnabled = loggingEnabled;
     }
 
+    /**
+     * Starts the http server
+     */
     public void start() {
 
         Thread dispatcherThread = new Thread(serverHandler);
@@ -119,6 +165,9 @@ public class HttpServer {
         dispatcherThread.start();
     }
 
+    /**
+     * Stops the http server
+     */
     public void stop() {
 
         running = false;
@@ -132,12 +181,21 @@ public class HttpServer {
         }
     }
 
+    /**
+     * Log message of the server
+     * @param level level
+     * @param message message
+     * @param arguments arguments
+     */
     private void log (Level level, String message, Object ... arguments) {
         if (loggingEnabled && logger != null) {
             logger.log(level, MessageFormat.format(message, arguments));
         }
     }
 
+    /**
+     * Server handler
+     */
     private class ServerHandler implements Runnable {
 
         @Override
@@ -217,6 +275,9 @@ public class HttpServer {
         }
     }
 
+    /**
+     * Client handler
+     */
     private class ClientHandler implements Runnable {
 
         private final HttpConnection connection;
