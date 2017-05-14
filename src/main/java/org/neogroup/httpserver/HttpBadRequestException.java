@@ -1,6 +1,9 @@
 
 package org.neogroup.httpserver;
 
+/**
+ * Bad Request exception
+ */
 public class HttpBadRequestException extends HttpException {
 
     public HttpBadRequestException(String msg) {
