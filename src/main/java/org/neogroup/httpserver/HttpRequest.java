@@ -7,6 +7,9 @@ import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+/**
+ * Class that holds the information of a request
+ */
 public class HttpRequest {
 
     private static final String QUERY_PARAMETERS_REGEX = "[&]";
@@ -31,10 +34,17 @@ public class HttpRequest {
     private boolean parametersParsed;
     private byte[] body;
 
+    /**
+     * Constructor for a http request
+     */
     public HttpRequest () {
         this(HttpConnection.getActiveConnection());
     }
 
+    /**
+     * Constructor for a http request with a given connection
+     * @param connection
+     */
     public HttpRequest (HttpConnection connection) {
         this.connection = connection;
         this.headers = new HashMap<>();
@@ -112,6 +122,11 @@ public class HttpRequest {
         }
     }
 
+    /**
+     * Parses a status line
+     * @param statusLine String with the status line
+     * @throws Exception
+     */
     private void processStatusLine (String statusLine) throws Exception {
 
         String[] parts = statusLine.split(LINE_FIELD_SEPARATOR);
@@ -120,46 +135,88 @@ public class HttpRequest {
         version = parts[VERSION_INDEX];
     }
 
+    /**
+     * Parses the header line
+     * @param headerLine String with the header line
+     * @throws Exception
+     */
     private void processHeaderLine (String headerLine) throws Exception {
 
          int separatorIndex = headerLine.indexOf(HEADER_SEPARATOR);
          headers.put(headerLine.substring(0, separatorIndex), headerLine.substring(separatorIndex+1).trim());
     }
 
+    /**
+     * Retrieves the method of the request
+     * @return method
+     */
     public String getMethod() {
         return method;
     }
 
+    /**
+     * Retrieves the uri of the request
+     * @return uri
+     */
     public URI getUri() {
         return uri;
     }
 
+    /**
+     * Retrieves the query of the request
+     * @return query
+     */
     public String getQuery() {
         return uri.getRawQuery();
     }
 
+    /**
+     * Retrieves the path of the request
+     * @return path
+     */
     public String getPath() {
         return uri.getRawPath();
     }
 
+    /**
+     * Retrieve the path parts
+     * @return array of path parts
+     */
     public List<String> getPathParts() {
         String path = getPath();
         String[] pathTokens = path.split(URI_SEPARATOR);
         return Arrays.asList(pathTokens);
     }
 
+    /**
+     * Retrieves the version of the request
+     * @return version
+     */
     public String getVersion() {
         return version;
     }
 
+    /**
+     * Retrieve the headers of the request
+     * @return headers
+     */
     public Map<String, String> getHeaders() {
         return Collections.unmodifiableMap(headers);
     }
 
+    /**
+     * Retrieve the first header value for the given header name
+     * @param headerName name of header
+     * @return header value
+     */
     public String getHeader (String headerName) {
         return headers.get(headerName);
     }
 
+    /**
+     * Retrieve the cookies of a request
+     * @return list of cookies
+     */
     public List<HttpCookie> getCookies () {
         List<HttpCookie> cookies = new ArrayList<>();
         String cookieHeader = getHeader(HttpHeader.COOKIE);
@@ -175,10 +232,18 @@ public class HttpRequest {
         return cookies;
     }
 
+    /**
+     * Retrieves the body of a request
+     * @return body
+     */
     public byte[] getBody() {
         return body;
     }
 
+    /**
+     * Retrieve the http parameters of a request
+     * @return map of parameters
+     */
     public Map<String,String> getParameters() {
 
         if (!parametersParsed) {
@@ -192,14 +257,28 @@ public class HttpRequest {
         return parameters;
     }
 
+    /**
+     * Retrieve the value of a parameter
+     * @param name name of a parameter
+     * @return value of a parameter
+     */
     public String getParameter (String name) {
         return getParameters().get(name);
     }
 
+    /**
+     * Indicates if a parameter exists or not
+     * @param name name of the parameter to check
+     * @return boolean
+     */
     public boolean hasParameter (String name) {
         return getParameters().containsKey(name);
     }
 
+    /**
+     * Retrieve parameters from a query string
+     * @param query query string
+     */
     private void addParametersFromQuery(String query) {
 
         try {
