@@ -5,6 +5,7 @@ import org.neogroup.httpserver.contexts.HttpContext;
 import org.neogroup.httpserver.contexts.HttpFolderContext;
 
 import java.text.MessageFormat;
+import java.util.List;
 import java.util.concurrent.Executors;
 
 public class Main {
@@ -19,9 +20,10 @@ public class Main {
         server.addContext(new HttpContext("/cookie/") {
             @Override
             public HttpResponse onContext(HttpRequest request) {
+                List<HttpCookie> cookies = request.getCookies();
+
                 HttpResponse response = new HttpResponse();
-                response.addHeader("Set-Cookie", "pepe=rama");
-                response.addHeader("Set-Cookie", "tito=cantach");
+                response.addCookie(new HttpCookie("pipo", "chippolazzill"));
                 response.write("Cookies set");
                 return response;
             }

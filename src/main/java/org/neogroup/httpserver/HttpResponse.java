@@ -81,6 +81,34 @@ public class HttpResponse {
         headers.clear();
     }
 
+    public void addCookie (HttpCookie cookie) {
+        StringBuilder cookieValue = new StringBuilder();
+        cookieValue.append(cookie.getName());
+        cookieValue.append("=");
+        cookieValue.append(cookie.getValue());
+        if (cookie.getExpires() != null) {
+            cookieValue.append("; Expires=");
+            cookieValue.append(HttpServerUtils.formatDate(cookie.getExpires()));
+        }
+        if (cookie.getMaxAge() != null) {
+            cookieValue.append("; Max-Age=");
+            cookieValue.append(cookie.getMaxAge());
+        }
+        if (cookie.getDomain() != null) {
+            cookieValue.append("; Domain=").append(cookie.getDomain());
+        }
+        if (cookie.getPath() != null) {
+            cookieValue.append("; Path=").append(cookie.getPath());
+        }
+        if (cookie.getSecure() != null) {
+            cookieValue.append("; Secure");
+        }
+        if (cookie.getSecure() != null) {
+            cookieValue.append("; HttpOnly");
+        }
+        addHeader(HttpHeader.SET_COOKIE, cookieValue.toString());
+    }
+
     public void setBody(String body) {
         setBody(body.getBytes());
     }

@@ -160,6 +160,21 @@ public class HttpRequest {
         return headers.get(headerName);
     }
 
+    public List<HttpCookie> getCookies () {
+        List<HttpCookie> cookies = new ArrayList<>();
+        String cookieHeader = getHeader(HttpHeader.COOKIE);
+        if (cookieHeader != null) {
+            String[] cookieHeaderTokens = cookieHeader.split(";");
+            for (String cookieHeaderToken : cookieHeaderTokens) {
+                String[] cookieParts = cookieHeaderToken.trim().split("=");
+                String cookieName = cookieParts[0];
+                String cookieValue = cookieParts[1];
+                cookies.add(new HttpCookie(cookieName, cookieValue));
+            }
+        }
+        return cookies;
+    }
+
     public byte[] getBody() {
         return body;
     }
