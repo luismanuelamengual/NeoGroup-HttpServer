@@ -29,7 +29,7 @@ public class HttpRequest {
     private String method;
     private URI uri;
     private String version;
-    private Map<String, String> headers;
+    private Map<String, List<String>> headers;
     private Map<String,String> parameters;
     private boolean parametersParsed;
     private byte[] body;
@@ -142,8 +142,15 @@ public class HttpRequest {
      */
     private void processHeaderLine (String headerLine) throws Exception {
 
-         int separatorIndex = headerLine.indexOf(HEADER_SEPARATOR);
-         headers.put(headerLine.substring(0, separatorIndex), headerLine.substring(separatorIndex+1).trim());
+        int separatorIndex = headerLine.indexOf(HEADER_SEPARATOR);
+        String headerName = headerLine.substring(0, separatorIndex);
+        String headerValue = headerLine.substring(separatorIndex+1).trim();
+        List<String> headerValues = headers.get(headerName);
+        if (headerValues == null) {
+            headerValues = new ArrayList<>();
+            headers.put(headerName, headerValues);
+        }
+        headerValues.add(headerValue);
     }
 
     /**
@@ -200,8 +207,26 @@ public class HttpRequest {
      * Retrieve the headers of the request
      * @return headers
      */
-    public Map<String, String> getHeaders() {
+    public Map<String, List<String>> getHeaders() {
         return Collections.unmodifiableMap(headers);
+    }
+
+    /**
+     * Retrieve all the headers for a given header name
+     * @param headerName name of header
+     * @return List of header values
+     */
+    public List<String> getHeaders (String headerName) {
+        return headers.get(headerName);
+    }
+
+    /**
+     * Indicates if a header name exists or not
+     * @param headerName name of the header
+     * @return boolean
+     */
+    public boolean hasHeader (String headerName) {
+        return headers.containsKey(headerName);
     }
 
     /**
@@ -210,7 +235,12 @@ public class HttpRequest {
      * @return header value
      */
     public String getHeader (String headerName) {
-        return headers.get(headerName);
+        String value = null;
+        List<String> headerValues = headers.get(headerName);
+        if (headerValues != null) {
+            value = headerValues.get(0);
+        }
+        return value;
     }
 
     /**
