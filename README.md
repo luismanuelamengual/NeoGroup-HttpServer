@@ -1,3 +1,7 @@
+![](https://img.shields.io/travis/luismanuelamengual/NeoGroup-HttpServer.svg) 
+![](https://img.shields.io/github/license/luismanuelamengual/NeoGroup-HttpServer.svg)
+![](https://img.shields.io/maven-central/v/com.github.luismanuelamengual/NeoGroup-HttpServer.svg)
+
 # NeoGroup-HttpServer
 
 Fast Open-source HTTP server for modern operating systems. The goal of this project is to provide a secure, efficient and extensible server that provides HTTP services in sync with the current HTTP standards.
