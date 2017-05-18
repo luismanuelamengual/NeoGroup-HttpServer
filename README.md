@@ -1,6 +1,10 @@
 ![](https://img.shields.io/travis/luismanuelamengual/NeoGroup-HttpServer.svg) 
 ![](https://img.shields.io/github/license/luismanuelamengual/NeoGroup-HttpServer.svg)
 ![](https://img.shields.io/maven-central/v/com.github.luismanuelamengual/NeoGroup-HttpServer.svg)
+![](https://img.shields.io/github/forks/luismanuelamengual/NeoGroup-Sparks.svg?style=social&label=Fork)
+![](https://img.shields.io/github/stars/luismanuelamengual/NeoGroup-Sparks.svg?style=social&label=Star)
+![](https://img.shields.io/github/watchers/luismanuelamengual/NeoGroup-Sparks.svg?style=social&label=Watch)
+![](https://img.shields.io/github/followers/luismanuelamengual.svg?style=social&label=Follow)
 
 # NeoGroup-HttpServer
 
