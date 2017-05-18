@@ -1,4 +1,4 @@
-# NeoGroup-HttpServer - Small and fast http server
+# NeoGroup-HttpServer
 
 Fast Open-source HTTP server for modern operating systems. The goal of this project is to provide a secure, efficient and extensible server that provides HTTP services in sync with the current HTTP standards.
 
