@@ -38,7 +38,7 @@ public class HttpRequest {
      * Constructor for a http request
      */
     public HttpRequest () {
-        this(HttpConnection.getActiveConnection());
+        this(HttpServer.getCurrentThreadConnection());
     }
 
     /**

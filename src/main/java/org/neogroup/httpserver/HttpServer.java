@@ -10,10 +10,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -33,6 +30,11 @@ public class HttpServer {
     private static final int DEFAULT_PORT = 80;
     private static final long CONNECTION_CHECKOUT_INTERVAL = 10000;
     private static final long MAX_IDLE_CONNECTION_INTERVAL = 5000;
+
+    private static final Map<Long, HttpConnection> threadConnections;
+    static {
+        threadConnections = new HashMap<>();
+    }
 
     private Selector selector;
     private ServerSocketChannel serverChannel;
@@ -172,6 +174,14 @@ public class HttpServer {
     }
 
     /**
+     * Gets the current thread active connection
+     * @return The connection for the current thread
+     */
+    public static HttpConnection getCurrentThreadConnection () {
+        return threadConnections.get(Thread.currentThread().getId());
+    }
+
+    /**
      * Starts the http server
      */
     public void start() {
@@ -308,7 +318,7 @@ public class HttpServer {
             connection.setAutoClose(true);
 
             //Starts a new connection
-            HttpConnection.setActiveConnection(connection);
+            threadConnections.put(Thread.currentThread().getId(), connection);
             try {
                 try {
                     //Starts a new request
@@ -353,7 +363,7 @@ public class HttpServer {
                 connection.setAutoClose(true);
             }
             finally {
-                HttpConnection.setActiveConnection(null);
+                threadConnections.remove(Thread.currentThread().getId());
             }
 
             runningConnections.remove(connection);

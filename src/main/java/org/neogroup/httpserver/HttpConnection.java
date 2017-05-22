@@ -15,32 +15,6 @@ public class HttpConnection {
     private boolean autoClose;
     private long creationTimestamp;
     private long regsitrationTimestamp;
-    private static final Map<Long, HttpConnection> activeConnections;
-
-    static {
-        activeConnections = new HashMap<>();
-    }
-
-    /**
-     * Sets the active connection for the current thread
-     * @param connection current thread active connection
-     */
-    public static void setActiveConnection (HttpConnection connection) {
-        if (connection != null) {
-            activeConnections.put(Thread.currentThread().getId(), connection);
-        }
-        else {
-            activeConnections.remove(Thread.currentThread().getId());
-        }
-    }
-
-    /**
-     * Gets the current thread active connection
-     * @return The connection for the current thread
-     */
-    public static HttpConnection getActiveConnection () {
-        return activeConnections.get(Thread.currentThread().getId());
-    }
 
     /**
      * Constructor for a connection

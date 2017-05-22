@@ -29,7 +29,7 @@ public class HttpResponse {
      * Default constructor for a http response
      */
     public HttpResponse () {
-        this(HttpConnection.getActiveConnection());
+        this(HttpServer.getCurrentThreadConnection());
     }
 
     /**
