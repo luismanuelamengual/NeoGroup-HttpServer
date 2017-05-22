@@ -232,7 +232,7 @@ public class HttpServer {
 
                     long time = System.currentTimeMillis();
 
-                    //Reconectar conexiones
+                    //Reconnect ready connections
                     synchronized (readyConnections) {
                         Iterator<HttpConnection> iterator = readyConnections.iterator();
                         while (iterator.hasNext()) {
@@ -250,7 +250,7 @@ public class HttpServer {
                         }
                     }
 
-                    //Eliminar conexiones sin actividad
+                    //Remove connections without activity
                     if ((time - lastConnectionCheckoutTimestamp) > CONNECTION_CHECKOUT_INTERVAL) {
                         synchronized (idleConnections) {
                             Iterator<HttpConnection> iterator = idleConnections.iterator();
@@ -319,45 +319,44 @@ public class HttpServer {
 
             //Starts a new connection
             threadConnections.put(Thread.currentThread().getId(), connection);
+
             try {
-                try {
-                    //Starts a new request
-                    HttpRequest request = new HttpRequest(connection);
-                    log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
+                //Starts a new request
+                HttpRequest request = new HttpRequest(connection);
+                log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
 
-                    String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
-                    if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
-                        connection.setAutoClose(false);
-                    }
+                String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
+                if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
+                    connection.setAutoClose(false);
+                }
 
-                    //Execute the context that matches the request
-                    HttpContext matchContext = findContext(request);
-                    if (matchContext != null) {
-                        try {
-                            HttpResponse response = matchContext.onContext(request);
-                            response.flush();
-                        }
-                        catch (Throwable contextException) {
-                            HttpResponse response = new HttpResponse(connection);
-                            response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
-                            response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
-                            response.setBody("Error processing context request path " + request.getPath() + "\". Error: " + contextException.toString());
-                            response.flush();
-                        }
-                    } else {
-                        HttpResponse response = new HttpResponse(connection);
-                        response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
-                        response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
-                        response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
+                //Execute the context that matches the request
+                HttpContext matchContext = findContext(request);
+                if (matchContext != null) {
+                    try {
+                        HttpResponse response = matchContext.onContext(request);
                         response.flush();
                     }
-                }
-                catch (HttpBadRequestException badRequestException) {
+                    catch (Throwable contextException) {
+                        HttpResponse response = new HttpResponse(connection);
+                        response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
+                        response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
+                        response.setBody("Error processing context request path " + request.getPath() + "\". Error: " + contextException.toString());
+                        response.flush();
+                    }
+                } else {
                     HttpResponse response = new HttpResponse(connection);
+                    response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
                     response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
-                    response.setBody("Bad request !!");
+                    response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
                     response.flush();
                 }
+            }
+            catch (HttpBadRequestException badRequestException) {
+                HttpResponse response = new HttpResponse(connection);
+                response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
+                response.setBody("Bad request !!");
+                response.flush();
             }
             catch (Throwable ex) {
                 connection.setAutoClose(true);
