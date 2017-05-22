@@ -10,6 +10,7 @@ import java.util.Map;
  */
 public class HttpConnection {
 
+    private final HttpServer server;
     private final SocketChannel channel;
     private boolean closed;
     private boolean autoClose;
@@ -18,14 +19,24 @@ public class HttpConnection {
 
     /**
      * Constructor for a connection
+     * @param server http server associated with the connection
      * @param channel socket channel associated with the connection
      */
-    public HttpConnection(SocketChannel channel) {
+    protected HttpConnection(HttpServer server, SocketChannel channel) {
+        this.server = server;
         this.channel = channel;
         closed = false;
         long timestamp = System.currentTimeMillis();
         creationTimestamp = timestamp;
         regsitrationTimestamp = timestamp;
+    }
+
+    /**
+     * Obtains the server associated with the connection
+     * @return http server
+     */
+    public HttpServer getServer() {
+        return server;
     }
 
     /**

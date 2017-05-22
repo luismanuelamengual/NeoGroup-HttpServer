@@ -275,7 +275,7 @@ public class HttpServer {
                             try {
                                 if (key.isAcceptable()) {
                                     SocketChannel clientChannel = serverChannel.accept();
-                                    HttpConnection connection = new HttpConnection(clientChannel);
+                                    HttpConnection connection = new HttpConnection(HttpServer.this, clientChannel);
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(connection);
