@@ -28,7 +28,7 @@ public class HttpResponse {
      */
     protected HttpResponse(HttpConnection connection) {
         this.connection = connection;
-        this.exchange = connection.getCurrentExchange();
+        this.exchange = connection.getExchange();
     }
 
     /**

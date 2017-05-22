@@ -26,7 +26,7 @@ public class HttpRequest {
      */
     protected HttpRequest (HttpConnection connection) {
         this.connection = connection;
-        this.exchange = connection.getCurrentExchange();
+        this.exchange = connection.getExchange();
     }
 
     /**

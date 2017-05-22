@@ -330,56 +330,63 @@ public class HttpServer {
 
             boolean closeConnection = true;
 
-            //Create a new http exchange
-            HttpExchange exchange = new HttpExchange(connection);
-            connection.setCurrentExchange(exchange);
-
             threadConnections.put(Thread.currentThread().getId(), connection);
             try {
-                //Starts the http exchange
-                exchange.start();
-                log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
+                try {
+                    HttpExchange exchange = connection.getExchange();
 
-                //Add general response headers
-                exchange.addResponseHeader(HttpHeader.SERVER, getName());
-                exchange.addResponseHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
-                String connectionHeader = exchange.getRequestHeader(HttpHeader.CONNECTION);
-                if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
-                    exchange.addResponseHeader(HttpHeader.CONNECTION, (HttpHeader.KEEP_ALIVE));
-                    closeConnection = false;
-                }
-                else {
-                    exchange.addResponseHeader(HttpHeader.CONNECTION, (HttpHeader.CLOSE));
-                }
+                    //Starts the http exchange
+                    exchange.startNewExchange();
+                    log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
 
-                //Execute the context that matches the request
-                HttpRequest request = new HttpRequest(connection);
-                HttpContext matchContext = findContext(request);
-                if (matchContext != null) {
-                    try {
+                    //Add general response headers
+                    exchange.addResponseHeader(HttpHeader.SERVER, getName());
+                    exchange.addResponseHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
+                    String connectionHeader = exchange.getRequestHeader(HttpHeader.CONNECTION);
+                    if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
+                        exchange.addResponseHeader(HttpHeader.CONNECTION, (HttpHeader.KEEP_ALIVE));
+                        closeConnection = false;
+                    } else {
+                        exchange.addResponseHeader(HttpHeader.CONNECTION, (HttpHeader.CLOSE));
+                    }
+
+                    //Execute the context that matches the request
+                    HttpRequest request = new HttpRequest(connection);
+                    HttpContext matchContext = findContext(request);
+                    if (matchContext != null) {
                         HttpResponse response = matchContext.onContext(request);
                         response.flush();
-                    }
-                    catch (Throwable contextException) {
+                    } else {
                         HttpResponse response = new HttpResponse(connection);
-                        response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
+                        response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
                         response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
-                        response.setBody("Error processing context request path " + request.getPath() + "\". Error: " + contextException.toString());
+                        response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
                         response.flush();
                     }
-                } else {
+                }
+                catch (HttpBadRequestException badRequestException) {
                     HttpResponse response = new HttpResponse(connection);
-                    response.setResponseCode(HttpResponseCode.HTTP_NOT_FOUND);
+                    response.setResponseCode(HttpResponseCode.HTTP_BAD_REQUEST);
                     response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
-                    response.setBody("No context found for request path \"" + request.getPath() + "\" !!");
+                    response.setBody("Bad request !!");
+                    response.flush();
+                    closeConnection = true;
+                }
+                catch (HttpException httpException) {
+                    HttpResponse response = new HttpResponse(connection);
+                    response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
+                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
+                    response.setBody("Connection error !!");
+                    response.flush();
+                    closeConnection = true;
+                }
+                catch (Throwable exception) {
+                    HttpResponse response = new HttpResponse(connection);
+                    response.setResponseCode(HttpResponseCode.HTTP_INTERNAL_ERROR);
+                    response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
+                    response.setBody("Internal error !!");
                     response.flush();
                 }
-            }
-            catch (HttpBadRequestException badRequestException) {
-                HttpResponse response = new HttpResponse(connection);
-                response.addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_PLAIN);
-                response.setBody("Bad request !!");
-                response.flush();
             }
             catch (Throwable ex) {
                 closeConnection = true;
@@ -387,9 +394,6 @@ public class HttpServer {
             finally {
                 threadConnections.remove(Thread.currentThread().getId());
             }
-
-            //Removes the current http exchange
-            connection.setCurrentExchange(null);
 
             //Close a connection
             if (!connection.isClosed()) {

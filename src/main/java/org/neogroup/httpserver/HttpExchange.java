@@ -37,7 +37,6 @@ public class HttpExchange {
     private String requestVersion;
     private Map<String, List<String>> requestHeaders;
     private Map<String,String> requestParameters;
-    private boolean requestParametersParsed;
     private byte[] requestBody;
 
     private int responseCode;
@@ -54,20 +53,29 @@ public class HttpExchange {
 
         this.connection = connection;
         this.requestHeaders = new LinkedHashMap<>();
-        this.requestParameters = new LinkedHashMap<>();
         this.responseHeaders = new LinkedHashMap<>();
         this.responseBodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
-        responseCode = HttpResponseCode.HTTP_OK;
-        responseHeadersSent = false;
-        responseBodySize = 0;
-        requestParametersParsed = false;
     }
 
     /**
      * Starts the new http exchange
      */
-    protected void start () {
+    protected void startNewExchange() throws HttpBadRequestException {
 
+        //Clear exchange values
+        requestMethod = null;
+        requestUri = null;
+        requestVersion = null;
+        requestHeaders.clear();
+        requestParameters = null;
+        requestBody = null;
+        responseHeaders.clear();
+        responseCode = HttpResponseCode.HTTP_OK;
+        responseBodyBuffer.clear();
+        responseHeadersSent = false;
+        responseBodySize = 0;
+
+        //Read request
         byte[] readData = null;
         try (ByteArrayOutputStream readStream = new ByteArrayOutputStream()) {
             int totalReadSize = 0;
@@ -91,8 +99,7 @@ public class HttpExchange {
             }
         }
         catch (Exception ex) {
-            connection.close();
-            throw new HttpException("Error reading request !!", ex);
+            throw new HttpBadRequestException("Error reading request !!", ex);
         }
 
         if (readData != null) {
@@ -272,13 +279,13 @@ public class HttpExchange {
      */
     public Map<String,String> getRequestParameters() {
 
-        if (!requestParametersParsed) {
-            addParametersFromQuery(getRequestQuery());
+        if (requestParameters == null) {
+            requestParameters = new HashMap<>();
+            addParametersFromQuery(requestParameters, getRequestQuery());
             String requestContentType = getRequestHeader(HttpHeader.CONTENT_TYPE);
             if (requestContentType != null && requestContentType.equals(HttpHeader.APPLICATION_FORM_URL_ENCODED)) {
-                addParametersFromQuery(new String(getRequestBody()));
+                addParametersFromQuery(requestParameters, new String(getRequestBody()));
             }
-            requestParametersParsed = true;
         }
         return requestParameters;
     }
@@ -531,7 +538,6 @@ public class HttpExchange {
                 connection.getChannel().write(headersBuffer);
             }
             catch (Throwable ex) {
-                connection.close();
                 throw new HttpException("Error writing responseHeaders !!", ex);
             }
 
@@ -550,7 +556,6 @@ public class HttpExchange {
             connection.getChannel().write(responseBodyBuffer);
         }
         catch (Exception ex) {
-            connection.close();
             throw new HttpException("Error writing data !!", ex);
         }
         responseBodyBuffer.clear();
@@ -560,7 +565,7 @@ public class HttpExchange {
      * Retrieve requestParameters from a query string
      * @param query query string
      */
-    private void addParametersFromQuery(String query) {
+    private void addParametersFromQuery(Map<String,String> parameters, String query) {
 
         try {
             if (query != null) {
@@ -575,12 +580,11 @@ public class HttpExchange {
                     if (param.length > 1) {
                         value = URLDecoder.decode(param[1], System.getProperty(FILE_ENCODING_SYSTEM_PROPERTY_NAME));
                     }
-                    requestParameters.put(key, value);
+                    parameters.put(key, value);
                 }
             }
         }
         catch (Exception ex) {
-            connection.close();
             throw new HttpException("Error reading request requestParameters !!", ex);
         }
     }

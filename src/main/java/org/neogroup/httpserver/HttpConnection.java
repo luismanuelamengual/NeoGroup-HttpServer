@@ -12,7 +12,7 @@ public class HttpConnection {
 
     private final HttpServer server;
     private final SocketChannel channel;
-    private HttpExchange currentExchange;
+    private final HttpExchange exchange;
     private boolean closed;
     private long creationTimestamp;
     private long regsitrationTimestamp;
@@ -25,6 +25,7 @@ public class HttpConnection {
     protected HttpConnection(HttpServer server, SocketChannel channel) {
         this.server = server;
         this.channel = channel;
+        this.exchange = new HttpExchange(this);
         closed = false;
         long timestamp = System.currentTimeMillis();
         creationTimestamp = timestamp;
@@ -45,6 +46,14 @@ public class HttpConnection {
      */
     public SocketChannel getChannel() {
         return channel;
+    }
+
+    /**
+     * Obtains the http exchange
+     * @return http exchange
+     */
+    public HttpExchange getExchange() {
+        return exchange;
     }
 
     /**
@@ -77,22 +86,6 @@ public class HttpConnection {
      */
     protected void setRegistrationTimestamp(long registrationTimestamp) {
         this.regsitrationTimestamp = registrationTimestamp;
-    }
-
-    /**
-     * Get the current exchange
-     * @return http exchange
-     */
-    protected HttpExchange getCurrentExchange() {
-        return currentExchange;
-    }
-
-    /**
-     * Set the current exchange
-     * @param currentExchange current exchange
-     */
-    protected void setCurrentExchange(HttpExchange currentExchange) {
-        this.currentExchange = currentExchange;
     }
 
     /**
