@@ -21,11 +21,9 @@ import java.util.logging.Logger;
  */
 public class HttpServer {
 
-    public static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
-    public static final String CONNECTION_DESTROYED_MESSAGE = "Connection \"{0}\" destroyed !!";
-    public static final String CONNECTION_REQUEST_RECEIVED_MESSAGE = "Connection \"{0}\" recevied request \"{1}\"";
-
-    public static final String SERVER_NAME = "NeoGroup-HttpServer";
+    private static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
+    private static final String CONNECTION_DESTROYED_MESSAGE = "Connection \"{0}\" destroyed !!";
+    private static final String CONNECTION_REQUEST_RECEIVED_MESSAGE = "Connection \"{0}\" recevied request \"{1}\"";
 
     private static final int DEFAULT_PORT = 80;
     private static final long CONNECTION_CHECKOUT_INTERVAL = 10000;
@@ -36,6 +34,7 @@ public class HttpServer {
         threadConnections = new HashMap<>();
     }
 
+    private String name;
     private Selector selector;
     private ServerSocketChannel serverChannel;
     private Executor executor;
@@ -65,6 +64,7 @@ public class HttpServer {
 
         try {
             running = false;
+            name = "NeoGroup-HttpServer";
             executor = new Executor() {
                 @Override
                 public void execute(Runnable task) {
@@ -77,7 +77,7 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(port));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-            logger = Logger.getLogger(SERVER_NAME);
+            logger = Logger.getAnonymousLogger();
             logger.setLevel(Level.ALL);
             ConsoleHandler consoleHandler = new ConsoleHandler();
             consoleHandler.setLevel(Level.ALL);
@@ -91,6 +91,22 @@ public class HttpServer {
         } catch (Exception ex) {
             throw new HttpException("Error creating HttpServer", ex);
         }
+    }
+
+    /**
+     * Get the name of the server
+     * @return string
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Set the name of the server
+     * @param name name of server
+     */
+    public void setName(String name) {
+        this.name = name;
     }
 
     /**

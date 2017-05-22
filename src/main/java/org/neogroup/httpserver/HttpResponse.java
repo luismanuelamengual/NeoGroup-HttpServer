@@ -38,7 +38,7 @@ public class HttpResponse {
      */
     public HttpResponse(HttpConnection connection) {
         this.connection = connection;
-        this.headers = new HashMap<>();
+        this.headers = new LinkedHashMap<>();
         this.bodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
         responseCode = HttpResponseCode.HTTP_OK;
         headersSent = false;
@@ -222,14 +222,11 @@ public class HttpResponse {
      */
     private void sendHeaders () {
         if (!headersSent) {
+
+            addHeader(HttpHeader.SERVER, connection.getServer().getName());
             addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
-            addHeader(HttpHeader.SERVER, HttpServer.SERVER_NAME);
-            if (!connection.isAutoClose()) {
-                addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
-            }
-            else {
-                addHeader(HttpHeader.CONNECTION, HttpHeader.CLOSE);
-            }
+            addHeader(HttpHeader.CONNECTION, (!connection.isAutoClose())? HttpHeader.KEEP_ALIVE : HttpHeader.CLOSE);
+
             if (!hasHeader(HttpHeader.CONTENT_TYPE)) {
                 addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_HTML);
             }
