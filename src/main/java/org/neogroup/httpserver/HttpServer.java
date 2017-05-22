@@ -124,6 +124,22 @@ public class HttpServer {
     }
 
     /**
+     * Finds a context for the current request
+     * @param request current reques
+     * @return http context
+     */
+    public HttpContext findContext (HttpRequest request) {
+        HttpContext matchContext = null;
+        for (HttpContext context : contexts) {
+            if (request.getPath().startsWith(context.getPath())) {
+                matchContext = context;
+                break;
+            }
+        }
+        return matchContext;
+    }
+
+    /**
      * Retrieves the logger of the server
      * @return Logger
      */
@@ -291,11 +307,11 @@ public class HttpServer {
 
             connection.setAutoClose(true);
 
-            //Obtención de la petición y la respuesta de la conexión
+            //Starts a new connection
             HttpConnection.setActiveConnection(connection);
             try {
                 try {
-                    //Iniciar una petición nueva
+                    //Starts a new request
                     HttpRequest request = new HttpRequest(connection);
                     log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
 
@@ -304,15 +320,8 @@ public class HttpServer {
                         connection.setAutoClose(false);
                     }
 
-                    //Ejecutar el contexto que coincida con el path de la petición
-                    HttpContext matchContext = null;
-                    for (HttpContext context : contexts) {
-                        if (request.getPath().startsWith(context.getPath())) {
-                            matchContext = context;
-                            break;
-                        }
-                    }
-
+                    //Execute the context that matches the request
+                    HttpContext matchContext = findContext(request);
                     if (matchContext != null) {
                         try {
                             HttpResponse response = matchContext.onContext(request);
@@ -349,7 +358,7 @@ public class HttpServer {
 
             runningConnections.remove(connection);
 
-            //Cerrar la conexión
+            //Close a connection
             if (!connection.isClosed()) {
                 if (connection.isAutoClose()) {
                     connection.close();
