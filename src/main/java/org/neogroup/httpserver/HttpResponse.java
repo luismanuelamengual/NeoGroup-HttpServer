@@ -12,18 +12,8 @@ import java.util.*;
  */
 public class HttpResponse {
 
-    private final static String STATUS_LINE_TEMPLATE = "HTTP/1.1 {0} {1}\r\n";
-    private final static String HEADER_LINE_TEMPLATE = "{0}: {1}\r\n";
-    private final static String SEPARATOR = "\r\n";
-    private final static int WRITE_BUFFER_SIZE = 8 * 1024;
-    private final static int HEADERS_WRITE_BUFFER_SIZE = 2048;
-
     private final HttpConnection connection;
-    private int responseCode;
-    private Map<String, List<String>> headers;
-    private ByteBuffer bodyBuffer;
-    private int bodySize;
-    private boolean headersSent;
+    private final HttpExchange exchange;
 
     /**
      * Default constructor for a http response
@@ -36,13 +26,9 @@ public class HttpResponse {
      * Constructor for a response with thte associated connection
      * @param connection Http connection
      */
-    public HttpResponse(HttpConnection connection) {
+    protected HttpResponse(HttpConnection connection) {
         this.connection = connection;
-        this.headers = new LinkedHashMap<>();
-        this.bodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
-        responseCode = HttpResponseCode.HTTP_OK;
-        headersSent = false;
-        bodySize = 0;
+        this.exchange = connection.getCurrentExchange();
     }
 
     /**
@@ -50,7 +36,7 @@ public class HttpResponse {
      * @return int response code
      */
     public int getResponseCode() {
-        return responseCode;
+        return exchange.getResponseCode();
     }
 
     /**
@@ -58,15 +44,15 @@ public class HttpResponse {
      * @param responseCode int response code
      */
     public void setResponseCode(int responseCode) {
-        this.responseCode = responseCode;
+        exchange.setResponseCode(responseCode);
     }
 
     /**
-     * Retrieve the headers of a response
+     * Retrieve the responseHeaders of a response
      * @return Headers of the response
      */
-    public Map<String,List<String>> getHeaders() {
-        return Collections.unmodifiableMap(headers);
+    public Map<String, List<String>> getHeaders() {
+        return exchange.getResponseHeaders();
     }
 
     /**
@@ -75,12 +61,7 @@ public class HttpResponse {
      * @param headerValue Header value
      */
     public void addHeader(String headerName, String headerValue) {
-        List<String> headerValues = headers.get(headerName);
-        if (headerValues == null) {
-            headerValues = new ArrayList<>();
-            headers.put(headerName, headerValues);
-        }
-        headerValues.add(headerValue);
+        exchange.addResponseHeader(headerName, headerValue);
     }
 
     /**
@@ -88,13 +69,8 @@ public class HttpResponse {
      * @param headerName name of the header
      * @return value of the header
      */
-    public String getHeader (String headerName) {
-        String value = null;
-        List<String> headerValues = headers.get(headerName);
-        if (headerValues != null) {
-            value = headerValues.get(0);
-        }
-        return value;
+    public String getHeader(String headerName) {
+        return exchange.getResponseHeader(headerName);
     }
 
     /**
@@ -102,16 +78,16 @@ public class HttpResponse {
      * @param headerName name of the header
      * @return values for a header
      */
-    public List<String> getHeaders (String headerName) {
-        return headers.get(headerName);
+    public List<String> getHeaders(String headerName) {
+        return exchange.getResponseHeaders(headerName);
     }
 
     /**
-     * Remove all headers with a given name
+     * Remove all responseHeaders with a given name
      * @param headerName name of the header
      */
-    public void removeHeader (String headerName) {
-        headers.remove(headerName);
+    public void removeHeader(String headerName) {
+        exchange.removeResponseHeader(headerName);
     }
 
     /**
@@ -119,47 +95,15 @@ public class HttpResponse {
      * @param headerName name of the header
      * @return boolean
      */
-    public boolean hasHeader (String headerName) {
-        return headers.containsKey(headerName);
+    public boolean hasHeader(String headerName) {
+        return exchange.hasResponseHeader(headerName);
     }
 
     /**
-     * Remove all headers
+     * Remove all responseHeaders
      */
-    public void clearHeaders () {
-        headers.clear();
-    }
-
-    /**
-     * Adds a new cookie to the response
-     * @param cookie cookie to add
-     */
-    public void addCookie (HttpCookie cookie) {
-        StringBuilder cookieValue = new StringBuilder();
-        cookieValue.append(cookie.getName());
-        cookieValue.append("=");
-        cookieValue.append(cookie.getValue());
-        if (cookie.getExpires() != null) {
-            cookieValue.append("; Expires=");
-            cookieValue.append(HttpServerUtils.formatDate(cookie.getExpires()));
-        }
-        if (cookie.getMaxAge() != null) {
-            cookieValue.append("; Max-Age=");
-            cookieValue.append(cookie.getMaxAge());
-        }
-        if (cookie.getDomain() != null) {
-            cookieValue.append("; Domain=").append(cookie.getDomain());
-        }
-        if (cookie.getPath() != null) {
-            cookieValue.append("; Path=").append(cookie.getPath());
-        }
-        if (cookie.getSecure() != null) {
-            cookieValue.append("; Secure");
-        }
-        if (cookie.getSecure() != null) {
-            cookieValue.append("; HttpOnly");
-        }
-        addHeader(HttpHeader.SET_COOKIE, cookieValue.toString());
+    public void clearHeaders() {
+        exchange.clearResponseHeaders();
     }
 
     /**
@@ -167,7 +111,7 @@ public class HttpResponse {
      * @param body content of the response
      */
     public void setBody(String body) {
-        setBody(body.getBytes());
+        exchange.setResponseBody(body);
     }
 
     /**
@@ -175,113 +119,37 @@ public class HttpResponse {
      * @param body content of the response
      */
     public void setBody(byte[] body) {
-        write(body);
+        exchange.setResponseBody(body);
     }
 
     /**
      * Writes content in the response
      * @param text text to write in the response
      */
-    public void write (String text) {
-        write(text.getBytes());
+    public void write(String text) {
+        exchange.write(text);
     }
 
     /**
      * Write content in the response
      * @param bytes bytes to write in the response
      */
-    public void write (byte[] bytes) {
-
-        bodySize += bytes.length;
-        int remainingBytes = bytes.length;
-        int writeIndex = 0;
-        while (remainingBytes > 0) {
-            int remainingBufferBytes = bodyBuffer.remaining();
-            if (remainingBytes > remainingBufferBytes) {
-                bodyBuffer.put(bytes, writeIndex, remainingBufferBytes);
-                writeBuffer();
-                writeIndex += remainingBufferBytes;
-                remainingBytes -= remainingBufferBytes;
-            }
-            else {
-                bodyBuffer.put(bytes, writeIndex, remainingBytes);
-                break;
-            }
-        }
+    public void write(byte[] bytes) {
+        exchange.write(bytes);
     }
 
     /**
      * Flushes content in the response
      */
-    public void flush () {
-        writeBuffer();
+    public void flush() {
+        exchange.flush();
     }
 
     /**
-     * Send headers with the response
+     * Adds a new cookie to the response
+     * @param cookie cookie to add
      */
-    private void sendHeaders () {
-        if (!headersSent) {
-
-            addHeader(HttpHeader.SERVER, connection.getServer().getName());
-            addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
-            addHeader(HttpHeader.CONNECTION, (!connection.isAutoClose())? HttpHeader.KEEP_ALIVE : HttpHeader.CLOSE);
-
-            if (!hasHeader(HttpHeader.CONTENT_TYPE)) {
-                addHeader(HttpHeader.CONTENT_TYPE, MimeUtils.TEXT_HTML);
-            }
-            if (!hasHeader(HttpHeader.CONTENT_LENGTH)) {
-                addHeader(HttpHeader.CONTENT_LENGTH, String.valueOf(bodySize));
-            }
-
-            try {
-                ByteBuffer headersBuffer = ByteBuffer.allocate(HEADERS_WRITE_BUFFER_SIZE);
-
-                //Writing status line
-                headersBuffer.put(MessageFormat.format(STATUS_LINE_TEMPLATE, responseCode, HttpResponseCode.msg(responseCode)).getBytes());
-                headersBuffer.flip();
-                connection.getChannel().write(headersBuffer);
-
-                //Writing headers
-                for (String headerName : headers.keySet()) {
-                    List<String> headerValues = headers.get(headerName);
-                    for (String headerValue : headerValues) {
-                        headersBuffer.clear();
-                        headersBuffer.put(MessageFormat.format(HEADER_LINE_TEMPLATE, headerName, headerValue).getBytes());
-                        headersBuffer.flip();
-                        connection.getChannel().write(headersBuffer);
-                    }
-                }
-
-                //Writing separator
-                headersBuffer.clear();
-                headersBuffer.put(SEPARATOR.getBytes());
-                headersBuffer.flip();
-                connection.getChannel().write(headersBuffer);
-            }
-            catch (Throwable ex) {
-                connection.close();
-                throw new HttpException("Error writing headers !!", ex);
-            }
-
-            headersSent = true;
-        }
-    }
-
-    /**
-     * Writes the buffered content
-     */
-    protected void writeBuffer() {
-
-        sendHeaders();
-        bodyBuffer.flip();
-        try {
-            connection.getChannel().write(bodyBuffer);
-        }
-        catch (Exception ex) {
-            connection.close();
-            throw new HttpException("Error writing data !!", ex);
-        }
-        bodyBuffer.clear();
+    public void addCookie(HttpCookie cookie) {
+        exchange.addCookie(cookie);
     }
 }

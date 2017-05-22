@@ -44,7 +44,6 @@ public class HttpServer {
     private boolean running;
     private final Set<HttpContext> contexts;
     private final Set<HttpConnection> idleConnections;
-    private final Set<HttpConnection> runningConnections;
     private final Set<HttpConnection> readyConnections;
     private long lastConnectionCheckoutTimestamp;
 
@@ -85,7 +84,6 @@ public class HttpServer {
             loggingEnabled = false;
             contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
             idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
-            runningConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
             lastConnectionCheckoutTimestamp = System.currentTimeMillis();
         } catch (Exception ex) {
@@ -304,7 +302,6 @@ public class HttpServer {
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
                                     idleConnections.remove(connection);
-                                    runningConnections.add(connection);
                                     executor.execute(new ClientHandler(connection));
                                 }
                             } catch (Exception ex) {}
@@ -331,22 +328,32 @@ public class HttpServer {
         @Override
         public void run() {
 
-            connection.setAutoClose(true);
+            boolean closeConnection = true;
 
-            //Starts a new connection
+            //Create a new http exchange
+            HttpExchange exchange = new HttpExchange(connection);
+            connection.setCurrentExchange(exchange);
+
             threadConnections.put(Thread.currentThread().getId(), connection);
-
             try {
-                //Starts a new request
-                HttpRequest request = new HttpRequest(connection);
-                log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, request.getPath());
+                //Starts the http exchange
+                exchange.start();
+                log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
 
-                String connectionHeader = request.getHeader(HttpHeader.CONNECTION);
+                //Add general response headers
+                exchange.addResponseHeader(HttpHeader.SERVER, getName());
+                exchange.addResponseHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
+                String connectionHeader = exchange.getRequestHeader(HttpHeader.CONNECTION);
                 if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
-                    connection.setAutoClose(false);
+                    exchange.addResponseHeader(HttpHeader.CONNECTION, (HttpHeader.KEEP_ALIVE));
+                    closeConnection = false;
+                }
+                else {
+                    exchange.addResponseHeader(HttpHeader.CONNECTION, (HttpHeader.CLOSE));
                 }
 
                 //Execute the context that matches the request
+                HttpRequest request = new HttpRequest(connection);
                 HttpContext matchContext = findContext(request);
                 if (matchContext != null) {
                     try {
@@ -375,17 +382,18 @@ public class HttpServer {
                 response.flush();
             }
             catch (Throwable ex) {
-                connection.setAutoClose(true);
+                closeConnection = true;
             }
             finally {
                 threadConnections.remove(Thread.currentThread().getId());
             }
 
-            runningConnections.remove(connection);
+            //Removes the current http exchange
+            connection.setCurrentExchange(null);
 
             //Close a connection
             if (!connection.isClosed()) {
-                if (connection.isAutoClose()) {
+                if (closeConnection) {
                     connection.close();
                 } else {
                     readyConnections.add(connection);

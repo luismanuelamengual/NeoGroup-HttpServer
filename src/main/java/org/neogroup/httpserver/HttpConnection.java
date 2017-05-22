@@ -12,8 +12,8 @@ public class HttpConnection {
 
     private final HttpServer server;
     private final SocketChannel channel;
+    private HttpExchange currentExchange;
     private boolean closed;
-    private boolean autoClose;
     private long creationTimestamp;
     private long regsitrationTimestamp;
 
@@ -75,24 +75,24 @@ public class HttpConnection {
      * Sets the connections registration timestamp
      * @param registrationTimestamp timestamp of registration
      */
-    public void setRegistrationTimestamp(long registrationTimestamp) {
+    protected void setRegistrationTimestamp(long registrationTimestamp) {
         this.regsitrationTimestamp = registrationTimestamp;
     }
 
     /**
-     * Indicates if the connection should auto close or not
-     * @return boolean that indicates if the connection should auto close
+     * Get the current exchange
+     * @return http exchange
      */
-    public boolean isAutoClose() {
-        return autoClose;
+    protected HttpExchange getCurrentExchange() {
+        return currentExchange;
     }
 
     /**
-     * Sets if the connection should auto close or not
-     * @param autoClose boolean
+     * Set the current exchange
+     * @param currentExchange current exchange
      */
-    public void setAutoClose(boolean autoClose) {
-        this.autoClose = autoClose;
+    protected void setCurrentExchange(HttpExchange currentExchange) {
+        this.currentExchange = currentExchange;
     }
 
     /**

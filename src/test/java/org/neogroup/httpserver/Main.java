@@ -20,7 +20,6 @@ public class Main {
         server.addContext(new HttpContext("/cookie/") {
             @Override
             public HttpResponse onContext(HttpRequest request) {
-                List<HttpCookie> cookies = request.getCookies();
 
                 HttpResponse response = new HttpResponse();
                 response.addCookie(new HttpCookie("pipo", "chippolazzill"));
