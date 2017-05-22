@@ -224,7 +224,7 @@ public class HttpResponse {
         if (!headersSent) {
             addHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
             addHeader(HttpHeader.SERVER, HttpServer.SERVER_NAME);
-            if (connection.isAutoClose()) {
+            if (!connection.isAutoClose()) {
                 addHeader(HttpHeader.CONNECTION, HttpHeader.KEEP_ALIVE);
             }
             else {
