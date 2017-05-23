@@ -16,19 +16,15 @@ public class HttpExchange {
     private static final String QUERY_PARAMETER_VALUES_REGEX = "[=]";
     private static final String FILE_ENCODING_SYSTEM_PROPERTY_NAME = "file.encoding";
     private static final String URI_SEPARATOR = "/";
-    private static final int READ_BUFFER_SIZE = 2048;
+    private static final int REQUEST_READ_BUFFER_SIZE = 2048;
     private static final byte LINE_SEPARATOR_CR = '\r';
     private static final byte LINE_SEPARATOR_LF = '\n';
-    private static final String LINE_FIELD_SEPARATOR = " ";
+    private static final String STATUS_LINE_FIELD_SEPARATOR = " ";
+    private static final String STATUS_LINE_TEMPLATE = "HTTP/1.1 {0} {1}\r\n";
+    private static final String HEADER_LINE_TEMPLATE = "{0}: {1}\r\n";
     private static final int HEADER_SEPARATOR = ':';
-    private static final int METHOD_INDEX = 0;
-    private static final int REQUEST_PATH_INDEX = 1;
-    private static final int VERSION_INDEX = 2;
-    private final static String STATUS_LINE_TEMPLATE = "HTTP/1.1 {0} {1}\r\n";
-    private final static String HEADER_LINE_TEMPLATE = "{0}: {1}\r\n";
-    private final static String SEPARATOR = "\r\n";
-    private final static int WRITE_BUFFER_SIZE = 8 * 1024;
-    private final static int HEADERS_WRITE_BUFFER_SIZE = 2048;
+    private static final int HEADERS_WRITE_BUFFER_SIZE = 2048;
+    private static final int BODY_WRITE_BUFFER_SIZE = 8192;
 
     private final HttpConnection connection;
 
@@ -54,7 +50,7 @@ public class HttpExchange {
         this.connection = connection;
         this.requestHeaders = new LinkedHashMap<>();
         this.responseHeaders = new LinkedHashMap<>();
-        this.responseBodyBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE);
+        this.responseBodyBuffer = ByteBuffer.allocate(BODY_WRITE_BUFFER_SIZE);
     }
 
     /**
@@ -80,7 +76,7 @@ public class HttpExchange {
         try (ByteArrayOutputStream readStream = new ByteArrayOutputStream()) {
             int totalReadSize = 0;
             int readSize = 0;
-            ByteBuffer readBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
+            ByteBuffer readBuffer = ByteBuffer.allocate(REQUEST_READ_BUFFER_SIZE);
             do {
                 readSize = connection.getChannel().read(readBuffer);
                 if (readSize == -1) {
@@ -151,10 +147,10 @@ public class HttpExchange {
      */
     private void processStatusLine (String statusLine) throws Exception {
 
-        String[] parts = statusLine.split(LINE_FIELD_SEPARATOR);
-        requestMethod = parts[METHOD_INDEX];
-        requestUri = new URI(parts[REQUEST_PATH_INDEX]);
-        requestVersion = parts[VERSION_INDEX];
+        String[] parts = statusLine.split(STATUS_LINE_FIELD_SEPARATOR);
+        requestMethod = parts[0];
+        requestUri = new URI(parts[1]);
+        requestVersion = parts[2];
     }
 
     /**
@@ -533,7 +529,8 @@ public class HttpExchange {
 
                 //Writing separator
                 headersBuffer.clear();
-                headersBuffer.put(SEPARATOR.getBytes());
+                headersBuffer.put(LINE_SEPARATOR_CR);
+                headersBuffer.put(LINE_SEPARATOR_LF);
                 headersBuffer.flip();
                 connection.getChannel().write(headersBuffer);
             }
