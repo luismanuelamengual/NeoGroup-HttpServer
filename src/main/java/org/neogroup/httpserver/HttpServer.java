@@ -12,7 +12,6 @@ import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,26 +20,29 @@ import java.util.logging.Logger;
  */
 public class HttpServer {
 
+    public static final String SERVER_NAME_PROPERTY_NAME = "serverName";
+    public static final String PORT_PROPERTY_NAME = "port";
+    public static final String LOGGING_ENABLED_PROPERTY_NAME = "loggingEnabled";
+    public static final String CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME = "connectionCheckoutInterval";
+    public static final String MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME = "maxIdleConnectionInterval";
+
+    public static final String SERVER_NAME_DEFAULT_VALUE = "NeoGroup-HttpServer";
+
     private static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
     private static final String CONNECTION_DESTROYED_MESSAGE = "Connection \"{0}\" destroyed !!";
     private static final String CONNECTION_REQUEST_RECEIVED_MESSAGE = "Connection \"{0}\" recevied request \"{1}\"";
-
-    private static final int DEFAULT_PORT = 80;
-    private static final long CONNECTION_CHECKOUT_INTERVAL = 10000;
-    private static final long MAX_IDLE_CONNECTION_INTERVAL = 5000;
 
     private static final Map<Long, HttpConnection> threadConnections;
     static {
         threadConnections = new HashMap<>();
     }
 
-    private String name;
     private Selector selector;
     private ServerSocketChannel serverChannel;
     private Executor executor;
     private ServerHandler serverHandler;
     private Logger logger;
-    private boolean loggingEnabled;
+    private Properties properties;
     private boolean running;
     private final Set<HttpContext> contexts;
     private final Set<HttpConnection> idleConnections;
@@ -48,63 +50,101 @@ public class HttpServer {
     private long lastConnectionCheckoutTimestamp;
 
     /**
-     * Default constructor for the http server. By default the server
-     * listens at port 80
+     * Constructor for the http server
      */
     public HttpServer() {
-        this(DEFAULT_PORT);
+        running = false;
+        properties = new Properties();
+        logger = Logger.getAnonymousLogger();
+        executor = new Executor() {
+            @Override
+            public void execute(Runnable task) {
+                task.run();
+            }
+        };
+        serverHandler = new ServerHandler();
+        contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
+        idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+        readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+        lastConnectionCheckoutTimestamp = System.currentTimeMillis();
     }
 
     /**
-     * Constructor for the http server listening at a given port
-     * @param port Port for the http server to listen
+     * Get the http server properties
+     * @return properties
      */
-    public HttpServer(int port) {
+    public Properties getProperties() {
+        return properties;
+    }
 
-        try {
-            running = false;
-            name = "NeoGroup-HttpServer";
-            executor = new Executor() {
-                @Override
-                public void execute(Runnable task) {
-                    task.run();
-                }
-            };
-            serverHandler = new ServerHandler();
-            selector = Selector.open();
-            serverChannel = ServerSocketChannel.open();
-            serverChannel.socket().bind(new InetSocketAddress(port));
-            serverChannel.configureBlocking(false);
-            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
-            logger = Logger.getAnonymousLogger();
-            logger.setLevel(Level.ALL);
-            ConsoleHandler consoleHandler = new ConsoleHandler();
-            consoleHandler.setLevel(Level.ALL);
-            logger.addHandler(consoleHandler);
-            loggingEnabled = false;
-            contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
-            idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
-            readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
-            lastConnectionCheckoutTimestamp = System.currentTimeMillis();
-        } catch (Exception ex) {
-            throw new HttpException("Error creating HttpServer", ex);
+    /**
+     * Set the http server properties
+     * @param properties
+     */
+    public void setProperties(Properties properties) {
+        this.properties = properties;
+    }
+
+    /**
+     * Set a property value
+     * @param key name of property
+     * @param value value of property
+     */
+    public void setProperty(String key, Object value) {
+        properties.put(key, value);
+    }
+
+    /**
+     * Get the value of a property
+     * @param key name of property
+     * @param <R> type of response
+     * @return casted response
+     */
+    public <R> R getProperty (String key) {
+        return (R)properties.get(key);
+    }
+
+    /**
+     * Get the value of a property diven a default value
+     * @param key name of property
+     * @param defaultValue default value
+     * @param <R> type of response
+     * @return casted response
+     */
+    public <R> R getProperty (String key, R defaultValue) {
+        R value = (R)properties.get(key);
+        if (value == null) {
+            value = defaultValue;
         }
+        return value;
     }
 
     /**
-     * Get the name of the server
-     * @return string
+     * Retrieves the logger of the server
+     * @return Logger
      */
-    public String getName() {
-        return name;
+    public Logger getLogger() {
+        return logger;
     }
 
     /**
-     * Set the name of the server
-     * @param name name of server
+     * Sets the logger of the server
+     * @param logger logger
      */
-    public void setName(String name) {
-        this.name = name;
+    public void setLogger(Logger logger) {
+        this.logger = logger;
+    }
+
+    /**
+     * Log message of the server
+     * @param level level
+     * @param message message
+     * @param arguments arguments
+     */
+    private void log (Level level, String message, Object ... arguments) {
+        if (logger != null && getProperty(LOGGING_ENABLED_PROPERTY_NAME, false)) {
+            logger.log(level, MessageFormat.format(message, arguments));
+        }
     }
 
     /**
@@ -156,38 +196,6 @@ public class HttpServer {
     }
 
     /**
-     * Retrieves the logger of the server
-     * @return Logger
-     */
-    public Logger getLogger() {
-        return logger;
-    }
-
-    /**
-     * Sets the logger of the server
-     * @param logger logger
-     */
-    public void setLogger(Logger logger) {
-        this.logger = logger;
-    }
-
-    /**
-     * Indicates where logging is enabled or not
-     * @return boolean
-     */
-    public boolean isLoggingEnabled() {
-        return loggingEnabled;
-    }
-
-    /**
-     * Sets where logging is enabled or not
-     * @param loggingEnabled logging enabled
-     */
-    public void setLoggingEnabled(boolean loggingEnabled) {
-        this.loggingEnabled = loggingEnabled;
-    }
-
-    /**
      * Gets the current thread active connection
      * @return The connection for the current thread
      */
@@ -199,6 +207,16 @@ public class HttpServer {
      * Starts the http server
      */
     public void start() {
+
+        try {
+            selector = Selector.open();
+            serverChannel = ServerSocketChannel.open();
+            serverChannel.socket().bind(new InetSocketAddress(getProperty(PORT_PROPERTY_NAME, 80)));
+            serverChannel.configureBlocking(false);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+        } catch (Exception ex) {
+            throw new HttpException("Error creating server socket", ex);
+        }
 
         Thread dispatcherThread = new Thread(serverHandler);
         running = true;
@@ -219,18 +237,8 @@ public class HttpServer {
             serverChannel.close();
         } catch (Exception ex) {
         }
-    }
-
-    /**
-     * Log message of the server
-     * @param level level
-     * @param message message
-     * @param arguments arguments
-     */
-    private void log (Level level, String message, Object ... arguments) {
-        if (loggingEnabled && logger != null) {
-            logger.log(level, MessageFormat.format(message, arguments));
-        }
+        selector = null;
+        serverChannel = null;
     }
 
     /**
@@ -241,6 +249,8 @@ public class HttpServer {
         @Override
         public void run() {
 
+            long connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, 10000);
+            long maxIdleConnectionInterval = getProperty(MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME, 5000);
             while (running) {
                 try {
 
@@ -265,12 +275,12 @@ public class HttpServer {
                     }
 
                     //Remove connections without activity
-                    if ((time - lastConnectionCheckoutTimestamp) > CONNECTION_CHECKOUT_INTERVAL) {
+                    if ((time - lastConnectionCheckoutTimestamp) > connectionCheckoutInterval) {
                         synchronized (idleConnections) {
                             Iterator<HttpConnection> iterator = idleConnections.iterator();
                             while (iterator.hasNext()) {
                                 HttpConnection connection = iterator.next();
-                                if ((time - connection.getRegistrationTimestamp()) > MAX_IDLE_CONNECTION_INTERVAL) {
+                                if ((time - connection.getRegistrationTimestamp()) > maxIdleConnectionInterval) {
                                     connection.close();
                                     iterator.remove();
                                     log(Level.FINE, CONNECTION_DESTROYED_MESSAGE, connection);
@@ -340,7 +350,7 @@ public class HttpServer {
                     log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
 
                     //Add general response headers
-                    exchange.addResponseHeader(HttpHeader.SERVER, getName());
+                    exchange.addResponseHeader(HttpHeader.SERVER, getProperty(SERVER_NAME_PROPERTY_NAME, SERVER_NAME_DEFAULT_VALUE));
                     exchange.addResponseHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                     String connectionHeader = exchange.getRequestHeader(HttpHeader.CONNECTION);
                     if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {

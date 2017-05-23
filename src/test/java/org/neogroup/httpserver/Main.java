@@ -14,7 +14,8 @@ public class Main {
 
     public static void main(String[] args) {
 
-        HttpServer server = new HttpServer(1408);
+        HttpServer server = new HttpServer();
+        server.setProperty(HttpServer.PORT_PROPERTY_NAME, 1408);
         server.setExecutor(Executors.newCachedThreadPool());
 
         server.addContext(new HttpContext("/cookie/") {
