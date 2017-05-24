@@ -16,9 +16,10 @@ public interface HttpSessionManager {
     /**
      * Destroy a session for a connection
      * @param connection connection
+     * @param session session to destroy
      * @return http session
      */
-    public abstract HttpSession destroySession (HttpConnection connection);
+    public abstract HttpSession destroySession (HttpConnection connection, HttpSession session);
 
     /**
      * Get a session for the connection

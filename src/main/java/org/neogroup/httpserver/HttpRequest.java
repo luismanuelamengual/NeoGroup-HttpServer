@@ -2,6 +2,7 @@
 package org.neogroup.httpserver;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -150,8 +151,17 @@ public class HttpRequest {
      * Retrieve the cookies of a request
      * @return list of cookies
      */
-    public List<HttpCookie> getCookies() {
+    public Collection<HttpCookie> getCookies() {
         return exchange.getCookies();
+    }
+
+    /**
+     * Obtain a cookie by its name
+     * @param cookieName name of cookie
+     * @return http cookie
+     */
+    public HttpCookie getCookie(String cookieName) {
+        return exchange.getCookie(cookieName);
     }
 
     /**

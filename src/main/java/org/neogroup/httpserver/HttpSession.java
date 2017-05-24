@@ -59,6 +59,13 @@ public class HttpSession {
     }
 
     /**
+     * Removes all attributes from the session
+     */
+    public void clearAttributes () {
+        attributes.clear();
+    }
+
+    /**
      * Ge attribute names
      * @return set of attribute names
      */

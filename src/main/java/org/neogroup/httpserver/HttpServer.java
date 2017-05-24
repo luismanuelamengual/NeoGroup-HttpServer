@@ -64,6 +64,7 @@ public class HttpServer {
             }
         };
         serverHandler = new ServerHandler();
+        sessionManager = new DefaultHttpSessionManager();
         contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
         idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
         readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());

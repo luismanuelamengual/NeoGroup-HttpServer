@@ -18,6 +18,48 @@ public class Main {
         server.setProperty(HttpServer.PORT_PROPERTY_NAME, 1408);
         server.setExecutor(Executors.newCachedThreadPool());
 
+        server.addContext(new HttpContext("/session/create" ) {
+            @Override
+            public HttpResponse onContext(HttpRequest request) {
+
+                HttpSession session = request.createSession();
+                session.setAttribute("name", "Luis");
+
+                HttpResponse response = new HttpResponse();
+                response.write("Session created !!");
+                return response;
+            }
+        });
+
+        server.addContext(new HttpContext("/session/show" ) {
+            @Override
+            public HttpResponse onContext(HttpRequest request) {
+
+                HttpSession session = request.getSession();
+                HttpResponse response = new HttpResponse();
+                if (session != null) {
+                    response.write("session: " + session.getAttribute("name"));
+                }
+                else {
+                    response.write("Empty session");
+                }
+                return response;
+            }
+        });
+
+        server.addContext(new HttpContext("/session/destroy" ) {
+            @Override
+            public HttpResponse onContext(HttpRequest request) {
+
+                request.destroySession();
+
+                HttpResponse response = new HttpResponse();
+                response.write("Session destroyed !!");
+                return response;
+            }
+        });
+
+
         server.addContext(new HttpContext("/cookie/") {
             @Override
             public HttpResponse onContext(HttpRequest request) {

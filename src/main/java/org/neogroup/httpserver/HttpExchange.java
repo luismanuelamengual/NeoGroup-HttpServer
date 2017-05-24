@@ -28,6 +28,7 @@ public class HttpExchange {
 
     private final HttpConnection connection;
     private HttpSession session;
+    private Map<String, HttpCookie> cookies;
 
     private String requestMethod;
     private URI requestUri;
@@ -60,6 +61,8 @@ public class HttpExchange {
     protected void startNewExchange() throws HttpBadRequestException {
 
         //Clear exchange values
+        session = null;
+        cookies = null;
         requestMethod = null;
         requestUri = null;
         requestVersion = null;
@@ -452,6 +455,27 @@ public class HttpExchange {
     }
 
     /**
+     * Get a map of cookies by name
+     * @return map of cookies
+     */
+    private Map<String, HttpCookie> getCookiesMap() {
+        if (cookies == null) {
+            cookies = new HashMap<>();
+            String cookieHeader = getRequestHeader(HttpHeader.COOKIE);
+            if (cookieHeader != null) {
+                String[] cookieHeaderTokens = cookieHeader.split(";");
+                for (String cookieHeaderToken : cookieHeaderTokens) {
+                    String[] cookieParts = cookieHeaderToken.trim().split("=");
+                    String cookieName = cookieParts[0];
+                    String cookieValue = cookieParts[1];
+                    cookies.put(cookieName, new HttpCookie(cookieName, cookieValue));
+                }
+            }
+        }
+        return cookies;
+    }
+
+    /**
      * Adds a new cookie to the response
      * @param cookie cookie to add
      */
@@ -481,25 +505,24 @@ public class HttpExchange {
             cookieValue.append("; HttpOnly");
         }
         addResponseHeader(HttpHeader.SET_COOKIE, cookieValue.toString());
+        getCookiesMap().put(cookie.getName(), cookie);
+    }
+
+    /**
+     * Obtain a cookie by its name
+     * @param cookieName name of cookie
+     * @return http cookie
+     */
+    public HttpCookie getCookie (String cookieName) {
+        return getCookiesMap().get(cookieName);
     }
 
     /**
      * Retrieve the cookies of a request
      * @return list of cookies
      */
-    public List<HttpCookie> getCookies () {
-        List<HttpCookie> cookies = new ArrayList<>();
-        String cookieHeader = getRequestHeader(HttpHeader.COOKIE);
-        if (cookieHeader != null) {
-            String[] cookieHeaderTokens = cookieHeader.split(";");
-            for (String cookieHeaderToken : cookieHeaderTokens) {
-                String[] cookieParts = cookieHeaderToken.trim().split("=");
-                String cookieName = cookieParts[0];
-                String cookieValue = cookieParts[1];
-                cookies.add(new HttpCookie(cookieName, cookieValue));
-            }
-        }
-        return cookies;
+    public Collection<HttpCookie> getCookies () {
+        return getCookiesMap().values();
     }
 
     /**
@@ -532,7 +555,7 @@ public class HttpExchange {
         if (session != null) {
             HttpSessionManager sessionManager = connection.getServer().getSessionManager();
             if (sessionManager != null) {
-                destroyedSession = sessionManager.destroySession(connection);
+                destroyedSession = sessionManager.destroySession(connection, session);
             }
         }
         session = null;
