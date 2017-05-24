@@ -27,6 +27,7 @@ public class HttpExchange {
     private static final int BODY_WRITE_BUFFER_SIZE = 8192;
 
     private final HttpConnection connection;
+    private HttpSession session;
 
     private String requestMethod;
     private URI requestUri;
@@ -137,6 +138,12 @@ public class HttpExchange {
         }
         else {
             throw new HttpBadRequestException("Empty request !!");
+        }
+
+        //Get the session for the new request
+        HttpSessionManager sessionManager = connection.getServer().getSessionManager();
+        if (sessionManager != null) {
+            session = sessionManager.getSession(connection);
         }
     }
 
@@ -493,6 +500,43 @@ public class HttpExchange {
             }
         }
         return cookies;
+    }
+
+    /**
+     * Get the current session associated with the exchange
+     * @return http session
+     */
+    public HttpSession getSession() {
+        return session;
+    }
+
+    /**
+     * Creates a new session
+     * @return http session
+     */
+    public HttpSession createSession() {
+        session = null;
+        HttpSessionManager sessionManager = connection.getServer().getSessionManager();
+        if (sessionManager != null) {
+            session = sessionManager.createSession(connection);
+        }
+        return session;
+    }
+
+    /**
+     * Destroys the current session
+     * @return http session
+     */
+    public HttpSession destroySession() {
+        HttpSession destroyedSession = null;
+        if (session != null) {
+            HttpSessionManager sessionManager = connection.getServer().getSessionManager();
+            if (sessionManager != null) {
+                destroyedSession = sessionManager.destroySession(connection);
+            }
+        }
+        session = null;
+        return destroyedSession;
     }
 
     /**

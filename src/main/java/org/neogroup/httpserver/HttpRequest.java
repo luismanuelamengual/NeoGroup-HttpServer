@@ -153,4 +153,28 @@ public class HttpRequest {
     public List<HttpCookie> getCookies() {
         return exchange.getCookies();
     }
+
+    /**
+     * Get the current session associated with the exchange
+     * @return http session
+     */
+    public HttpSession getSession() {
+        return exchange.getSession();
+    }
+
+    /**
+     * Creates a new session
+     * @return http session
+     */
+    public HttpSession createSession() {
+        return exchange.createSession();
+    }
+
+    /**
+     * Destroys the current session
+     * @return http session
+     */
+    public HttpSession destroySession() {
+        return exchange.destroySession();
+    }
 }

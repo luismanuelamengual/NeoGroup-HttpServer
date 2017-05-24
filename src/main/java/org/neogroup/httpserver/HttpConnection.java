@@ -9,8 +9,8 @@ import java.nio.channels.SocketChannel;
 public class HttpConnection {
 
     private final HttpServer server;
-    private final SocketChannel channel;
     private final HttpExchange exchange;
+    private final SocketChannel channel;
     private boolean closed;
     private long creationTimestamp;
     private long lastActivityTimestamp;

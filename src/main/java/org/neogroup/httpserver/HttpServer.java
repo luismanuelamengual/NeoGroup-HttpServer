@@ -41,6 +41,7 @@ public class HttpServer {
     private ServerSocketChannel serverChannel;
     private Executor executor;
     private ServerHandler serverHandler;
+    private HttpSessionManager sessionManager;
     private Logger logger;
     private Properties properties;
     private boolean running;
@@ -145,6 +146,22 @@ public class HttpServer {
         if (logger != null && getProperty(LOGGING_ENABLED_PROPERTY_NAME, false)) {
             logger.log(level, MessageFormat.format(message, arguments));
         }
+    }
+
+    /**
+     * Get the session manager
+     * @return session manager
+     */
+    public HttpSessionManager getSessionManager() {
+        return sessionManager;
+    }
+
+    /**
+     * Set the session manager
+     * @param sessionManager session manager
+     */
+    public void setSessionManager(HttpSessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     /**
