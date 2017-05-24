@@ -2,8 +2,6 @@
 package org.neogroup.httpserver;
 
 import java.nio.channels.SocketChannel;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Class that holds all the information of a connection
@@ -15,7 +13,7 @@ public class HttpConnection {
     private final HttpExchange exchange;
     private boolean closed;
     private long creationTimestamp;
-    private long regsitrationTimestamp;
+    private long lastActivityTimestamp;
 
     /**
      * Constructor for a connection
@@ -29,7 +27,7 @@ public class HttpConnection {
         closed = false;
         long timestamp = System.currentTimeMillis();
         creationTimestamp = timestamp;
-        regsitrationTimestamp = timestamp;
+        lastActivityTimestamp = timestamp;
     }
 
     /**
@@ -46,6 +44,16 @@ public class HttpConnection {
      */
     public SocketChannel getChannel() {
         return channel;
+    }
+
+    /**
+     * Creates a new http exchanges
+     * @return http exchange
+     */
+    public HttpExchange createExchange () {
+        lastActivityTimestamp = System.currentTimeMillis();
+        exchange.startNewExchange();
+        return exchange;
     }
 
     /**
@@ -76,16 +84,8 @@ public class HttpConnection {
      * Obtains the connection registration timestamp
      * @return obtains a timestamp of the registration
      */
-    public long getRegistrationTimestamp() {
-        return regsitrationTimestamp;
-    }
-
-    /**
-     * Sets the connections registration timestamp
-     * @param registrationTimestamp timestamp of registration
-     */
-    protected void setRegistrationTimestamp(long registrationTimestamp) {
-        this.regsitrationTimestamp = registrationTimestamp;
+    public long getLastActivityTimestamp() {
+        return lastActivityTimestamp;
     }
 
     /**

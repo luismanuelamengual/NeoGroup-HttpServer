@@ -266,7 +266,6 @@ public class HttpServer {
                                 clientChannel.configureBlocking(false);
                                 SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                 clientReadKey.attach(connection);
-                                connection.setRegistrationTimestamp(System.currentTimeMillis());
                                 iterator.remove();
                                 idleConnections.add(connection);
                             }
@@ -280,7 +279,7 @@ public class HttpServer {
                             Iterator<HttpConnection> iterator = idleConnections.iterator();
                             while (iterator.hasNext()) {
                                 HttpConnection connection = iterator.next();
-                                if ((time - connection.getRegistrationTimestamp()) > maxIdleConnectionInterval) {
+                                if ((time - connection.getLastActivityTimestamp()) > maxIdleConnectionInterval) {
                                     connection.close();
                                     iterator.remove();
                                     log(Level.FINE, CONNECTION_DESTROYED_MESSAGE, connection);
@@ -303,7 +302,6 @@ public class HttpServer {
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                     clientReadKey.attach(connection);
-                                    connection.setRegistrationTimestamp(System.currentTimeMillis());
                                     idleConnections.add(connection);
                                     log(Level.FINE, CONNECTION_CREATED_MESSAGE, connection);
                                 }
@@ -343,10 +341,8 @@ public class HttpServer {
             threadConnections.put(Thread.currentThread().getId(), connection);
             try {
                 try {
-                    HttpExchange exchange = connection.getExchange();
-
                     //Starts the http exchange
-                    exchange.startNewExchange();
+                    HttpExchange exchange = connection.createExchange();
                     log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
 
                     //Add general response headers
