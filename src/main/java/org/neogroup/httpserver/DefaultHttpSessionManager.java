@@ -13,6 +13,7 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
 
     public static final String SESSION_NAME = "sessionName";
     public static final String SESSION_USE_COOKIES_PROPERTY_NAME = "sessionUseCookies";
+    public static final String SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME = "sessionMaxInactiveInterval";
 
     public static final String DEFAULT_SESSION_NAME = "sessionId";
 
@@ -33,6 +34,8 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
     @Override
     public HttpSession createSession(HttpConnection connection) {
         HttpSession session = new HttpSession();
+        session.setLastActivityTimestamp(System.currentTimeMillis());
+        session.setMaxInactiveInterval(connection.getServer().getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, 300000));
         sessions.put(session.getId(), session);
         if (getSessionUseCookies(connection)) {
             HttpCookie cookie = new HttpCookie(getSessionName(connection), session.getId().toString());
@@ -51,6 +54,11 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
     public HttpSession destroySession(HttpConnection connection, HttpSession session) {
         session.clearAttributes();
         sessions.remove(session.getId());
+        if (getSessionUseCookies(connection)) {
+            HttpCookie cookie = new HttpCookie(getSessionName(connection), "");
+            cookie.setMaxAge(0);
+            connection.getExchange().addCookie(cookie);
+        }
         return session;
     }
 
@@ -65,6 +73,9 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
         UUID sessionId = getSessionId(connection);
         if (sessionId != null) {
             session = sessions.get(sessionId);
+            if (session != null) {
+                session.setLastActivityTimestamp(System.currentTimeMillis());
+            }
         }
         return session;
     }
@@ -80,13 +91,13 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
         String sessionName = getSessionName(connection);
         if (getSessionUseCookies(connection)) {
             HttpCookie sessionCookie = connection.getExchange().getCookie(sessionName);
-            if (sessionCookie != null) {
+            if (sessionCookie != null && !sessionCookie.getValue().isEmpty()) {
                 sessionId = UUID.fromString(sessionCookie.getValue());
             }
         }
         else {
             String sessionIdString = connection.getExchange().getRequestParameter(sessionName);
-            if (sessionIdString != null) {
+            if (sessionIdString != null && !sessionIdString.isEmpty()) {
                 sessionId = UUID.fromString(sessionIdString);
             }
         }

@@ -466,9 +466,15 @@ public class HttpExchange {
                 String[] cookieHeaderTokens = cookieHeader.split(";");
                 for (String cookieHeaderToken : cookieHeaderTokens) {
                     String[] cookieParts = cookieHeaderToken.trim().split("=");
-                    String cookieName = cookieParts[0];
-                    String cookieValue = cookieParts[1];
-                    cookies.put(cookieName, new HttpCookie(cookieName, cookieValue));
+                    if (cookieParts.length == 2) {
+                        String cookieName = cookieParts[0];
+                        String cookieValue = cookieParts[1];
+                        cookies.put(cookieName, new HttpCookie(cookieName, cookieValue));
+                    }
+                    else {
+                        String cookieName = cookieParts[0];
+                        cookies.put(cookieName, new HttpCookie(cookieName, ""));
+                    }
                 }
             }
         }

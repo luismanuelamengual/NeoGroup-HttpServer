@@ -13,6 +13,8 @@ public class HttpSession {
 
     private final UUID id;
     private final Map<String,Object> attributes;
+    private long lastActivityTimestamp;
+    private int maxInactiveInterval;
 
     /**
      * Constructor for the http session
@@ -28,6 +30,38 @@ public class HttpSession {
      */
     public UUID getId() {
         return id;
+    }
+
+    /**
+     * Get the session last activity timestamp
+     * @return long
+     */
+    public long getLastActivityTimestamp() {
+        return lastActivityTimestamp;
+    }
+
+    /**
+     * Set the session last activity timestamp
+     * @param lastActivityTimestamp timestamp
+     */
+    protected void setLastActivityTimestamp(long lastActivityTimestamp) {
+        this.lastActivityTimestamp = lastActivityTimestamp;
+    }
+
+    /**
+     * Get the maximum time interval for inactive session
+     * @return int max interval
+     */
+    public int getMaxInactiveInterval() {
+        return maxInactiveInterval;
+    }
+
+    /**
+     * Set the maximum time interval for inactive session
+     * @param maxInactiveInterval max interval
+     */
+    public void setMaxInactiveInterval(int maxInactiveInterval) {
+        this.maxInactiveInterval = maxInactiveInterval;
     }
 
     /**
