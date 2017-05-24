@@ -11,7 +11,7 @@ import java.util.UUID;
  */
 public class DefaultHttpSessionManager implements HttpSessionManager {
 
-    public static final String SESSION_NAME = "sessionName";
+    public static final String SESSION_NAME_PROPERTY_NAME = "sessionName";
     public static final String SESSION_USE_COOKIES_PROPERTY_NAME = "sessionUseCookies";
     public static final String SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME = "sessionMaxInactiveInterval";
 
@@ -110,7 +110,7 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
      * @return session name
      */
     protected String getSessionName (HttpConnection connection) {
-        return connection.getServer().getProperty(SESSION_NAME, DEFAULT_SESSION_NAME);
+        return connection.getServer().getProperty(SESSION_NAME_PROPERTY_NAME, DEFAULT_SESSION_NAME);
     }
 
     /**
