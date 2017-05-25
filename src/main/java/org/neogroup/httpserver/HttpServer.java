@@ -12,6 +12,9 @@ import java.nio.channels.SocketChannel;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,6 +44,7 @@ public class HttpServer {
     private ServerSocketChannel serverChannel;
     private Executor executor;
     private ServerHandler serverHandler;
+    private ScheduledExecutorService timer;
     private HttpSessionManager sessionManager;
     private Logger logger;
     private Properties properties;
@@ -65,6 +69,7 @@ public class HttpServer {
         };
         serverHandler = new ServerHandler();
         sessionManager = new DefaultHttpSessionManager();
+        timer = Executors.newSingleThreadScheduledExecutor();
         contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
         idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
         readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
@@ -232,6 +237,10 @@ public class HttpServer {
             serverChannel.socket().bind(new InetSocketAddress(getProperty(PORT_PROPERTY_NAME, 80)));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+            long connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, 10000);
+            timer.scheduleAtFixedRate(new ConnectionsHandler(),connectionCheckoutInterval,connectionCheckoutInterval, TimeUnit.MILLISECONDS);
+
         } catch (Exception ex) {
             throw new HttpException("Error creating server socket", ex);
         }
@@ -255,6 +264,7 @@ public class HttpServer {
             serverChannel.close();
         } catch (Exception ex) {
         }
+        timer.shutdownNow();
         selector = null;
         serverChannel = null;
     }
@@ -266,14 +276,8 @@ public class HttpServer {
 
         @Override
         public void run() {
-
-            long connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, 10000);
-            long maxIdleConnectionInterval = getProperty(MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME, 5000);
             while (running) {
                 try {
-
-                    long time = System.currentTimeMillis();
-
                     //Reconnect ready connections
                     synchronized (readyConnections) {
                         Iterator<HttpConnection> iterator = readyConnections.iterator();
@@ -289,22 +293,6 @@ public class HttpServer {
                             }
                             catch (Exception ex) {}
                         }
-                    }
-
-                    //Remove connections without activity
-                    if ((time - lastConnectionCheckoutTimestamp) > connectionCheckoutInterval) {
-                        synchronized (idleConnections) {
-                            Iterator<HttpConnection> iterator = idleConnections.iterator();
-                            while (iterator.hasNext()) {
-                                HttpConnection connection = iterator.next();
-                                if ((time - connection.getLastActivityTimestamp()) > maxIdleConnectionInterval) {
-                                    connection.close();
-                                    iterator.remove();
-                                    log(Level.FINE, CONNECTION_DESTROYED_MESSAGE, connection);
-                                }
-                            }
-                        }
-                        lastConnectionCheckoutTimestamp = time;
                     }
 
                     selector.select(1000);
@@ -426,6 +414,29 @@ public class HttpServer {
                 } else {
                     readyConnections.add(connection);
                     selector.wakeup();
+                }
+            }
+        }
+    }
+
+    /**
+     * Handler that manages all connections
+     * Removes connections that are inactive
+     */
+    private class ConnectionsHandler implements Runnable {
+        @Override
+        public void run() {
+            long time = System.currentTimeMillis();
+            int maxIdleConnectionInterval = getProperty(MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME, 5000);
+            synchronized (idleConnections) {
+                Iterator<HttpConnection> iterator = idleConnections.iterator();
+                while (iterator.hasNext()) {
+                    HttpConnection connection = iterator.next();
+                    if ((time - connection.getLastActivityTimestamp()) > maxIdleConnectionInterval) {
+                        connection.close();
+                        iterator.remove();
+                        log(Level.FINE, CONNECTION_DESTROYED_MESSAGE, connection);
+                    }
                 }
             }
         }

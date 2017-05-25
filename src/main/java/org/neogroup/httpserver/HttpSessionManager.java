@@ -2,7 +2,7 @@
 package org.neogroup.httpserver;
 
 /**
- * Manager of session in charge of createing, obtaining and destroying sessions
+ * Manager of session in charge of creating, obtaining and destroying sessions
  */
 public interface HttpSessionManager {
 
