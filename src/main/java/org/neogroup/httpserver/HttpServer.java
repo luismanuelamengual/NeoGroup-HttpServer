@@ -285,7 +285,6 @@ public class HttpServer {
                             HttpConnection connection = iterator.next();
                             try {
                                 SocketChannel clientChannel = connection.getChannel();
-                                clientChannel.configureBlocking(false);
                                 SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
                                 clientReadKey.attach(connection);
                                 iterator.remove();
@@ -304,15 +303,14 @@ public class HttpServer {
                             try {
                                 if (key.isAcceptable()) {
                                     SocketChannel clientChannel = serverChannel.accept();
-                                    HttpConnection connection = new HttpConnection(HttpServer.this, clientChannel);
                                     clientChannel.configureBlocking(false);
                                     SelectionKey clientReadKey = clientChannel.register(selector, SelectionKey.OP_READ);
+                                    HttpConnection connection = new HttpConnection(HttpServer.this, clientChannel);
                                     clientReadKey.attach(connection);
                                     idleConnections.add(connection);
                                     log(Level.FINE, CONNECTION_CREATED_MESSAGE, connection);
                                 }
                                 else if (key.isReadable()) {
-                                    SocketChannel clientChannel = (SocketChannel)key.channel();
                                     HttpConnection connection = (HttpConnection) key.attachment();
                                     key.cancel();
                                     idleConnections.remove(connection);
