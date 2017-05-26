@@ -52,7 +52,6 @@ public class HttpServer {
     private final Set<HttpContext> contexts;
     private final Set<HttpConnection> idleConnections;
     private final Set<HttpConnection> readyConnections;
-    private long lastConnectionCheckoutTimestamp;
 
     /**
      * Constructor for the http server
@@ -73,7 +72,6 @@ public class HttpServer {
         contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
         idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
         readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
-        lastConnectionCheckoutTimestamp = System.currentTimeMillis();
     }
 
     /**
