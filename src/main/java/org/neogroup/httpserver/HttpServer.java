@@ -276,7 +276,7 @@ public class HttpServer {
         sessions.put(session.getId(), session);
         if (getProperty(SESSION_USE_COOKIES_PROPERTY_NAME, DEFAULT_SESSION_USE_COOKIES)) {
             HttpCookie cookie = new HttpCookie(getProperty(SESSION_NAME_PROPERTY_NAME, DEFAULT_SESSION_NAME), session.getId().toString());
-            cookie.setMaxAge(maxInactiveInterval);
+            cookie.setMaxAge((int)Math.ceil(maxInactiveInterval / 1000));
             connection.getExchange().addCookie(cookie);
         }
         return session;
