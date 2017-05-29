@@ -14,16 +14,22 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
     public static final String SESSION_NAME_PROPERTY_NAME = "sessionName";
     public static final String SESSION_USE_COOKIES_PROPERTY_NAME = "sessionUseCookies";
     public static final String SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME = "sessionMaxInactiveInterval";
+    public static final String SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME = "sessionCheckoutInterval";
 
     public static final String DEFAULT_SESSION_NAME = "sessionId";
+    public static final int DEFAULT_SESSION_MAX_INACTIVE_INTERVAL = 300000;
+    public static final int DEFAULT_SESSION_CHECKOUT_INTERVAL = 60000;
+    public static final boolean DEFAULT_SESSION_USE_COOKIES = true;
 
     private Map<UUID, HttpSession> sessions;
+    private long lastSessionsCheckout;
 
     /**
      * Constructor for the http session manager
      */
     public DefaultHttpSessionManager() {
         this.sessions = Collections.synchronizedMap(new HashMap<UUID, HttpSession>());
+        lastSessionsCheckout = System.currentTimeMillis();
     }
 
     /**
@@ -33,12 +39,14 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
      */
     @Override
     public HttpSession createSession(HttpConnection connection) {
+        int maxInactiveInterval = connection.getServer().getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
         HttpSession session = new HttpSession();
         session.setLastActivityTimestamp(System.currentTimeMillis());
-        session.setMaxInactiveInterval(connection.getServer().getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, 300000));
+        session.setMaxInactiveInterval(maxInactiveInterval);
         sessions.put(session.getId(), session);
         if (getSessionUseCookies(connection)) {
             HttpCookie cookie = new HttpCookie(getSessionName(connection), session.getId().toString());
+            cookie.setMaxAge(maxInactiveInterval);
             connection.getExchange().addCookie(cookie);
         }
         return session;
@@ -69,6 +77,7 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
      */
     @Override
     public HttpSession getSession(HttpConnection connection) {
+        destroyInactiveSessions(connection);
         HttpSession session = null;
         UUID sessionId = getSessionId(connection);
         if (sessionId != null) {
@@ -86,7 +95,6 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
      * @return id of session
      */
     protected UUID getSessionId (HttpConnection connection) {
-
         UUID sessionId = null;
         String sessionName = getSessionName(connection);
         if (getSessionUseCookies(connection)) {
@@ -119,6 +127,19 @@ public class DefaultHttpSessionManager implements HttpSessionManager {
      * @return use or not cookies
      */
     protected boolean getSessionUseCookies (HttpConnection connection) {
-        return connection.getServer().getProperty(SESSION_USE_COOKIES_PROPERTY_NAME, true);
+        return connection.getServer().getProperty(SESSION_USE_COOKIES_PROPERTY_NAME, DEFAULT_SESSION_USE_COOKIES);
+    }
+
+    /**
+     * Destroys all sessions that have expired
+     */
+    protected void destroyInactiveSessions (HttpConnection connection) {
+        long time = System.currentTimeMillis();
+        if ((time - lastSessionsCheckout) > connection.getServer().getProperty(SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_CHECKOUT_INTERVAL)) {
+            synchronized (sessions) {
+                sessions.entrySet().removeIf(entry -> (time - entry.getValue().getLastActivityTimestamp()) > entry.getValue().getMaxInactiveInterval());
+            }
+            lastSessionsCheckout = time;
+        }
     }
 }

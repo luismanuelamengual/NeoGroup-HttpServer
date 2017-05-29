@@ -147,6 +147,9 @@ public class HttpExchange {
         HttpSessionManager sessionManager = connection.getServer().getSessionManager();
         if (sessionManager != null) {
             session = sessionManager.getSession(connection);
+            if (session != null) {
+                session.setLastActivityTimestamp(System.currentTimeMillis());
+            }
         }
     }
 

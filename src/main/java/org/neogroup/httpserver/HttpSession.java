@@ -14,6 +14,7 @@ public class HttpSession {
     private final UUID id;
     private final Map<String,Object> attributes;
     private long lastActivityTimestamp;
+    private long creationTimestamp;
     private int maxInactiveInterval;
 
     /**
@@ -22,6 +23,9 @@ public class HttpSession {
     public HttpSession() {
         this.id = UUID.randomUUID();
         this.attributes = new HashMap<>();
+        long time = System.currentTimeMillis();
+        creationTimestamp = time;
+        lastActivityTimestamp = time;
     }
 
     /**
@@ -30,6 +34,14 @@ public class HttpSession {
      */
     public UUID getId() {
         return id;
+    }
+
+    /**
+     * Get the session creation timestamp
+     * @return long
+     */
+    public long getCreationTimestamp() {
+        return creationTimestamp;
     }
 
     /**
