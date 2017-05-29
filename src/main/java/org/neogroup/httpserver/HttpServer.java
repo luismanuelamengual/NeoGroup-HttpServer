@@ -63,7 +63,7 @@ public class HttpServer {
     private final Set<HttpContext> contexts;
     private final Set<HttpConnection> idleConnections;
     private final Set<HttpConnection> readyConnections;
-    private Map<UUID, HttpSession> sessions;
+    private final Map<UUID, HttpSession> sessions;
 
     /**
      * Constructor for the http server
