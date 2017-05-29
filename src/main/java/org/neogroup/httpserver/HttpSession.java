@@ -15,11 +15,12 @@ public class HttpSession {
     private final Map<String,Object> attributes;
     private long lastActivityTimestamp;
     private long creationTimestamp;
+    private int maxInactiveInterval;
 
     /**
      * Constructor for the http session
      */
-    public HttpSession() {
+    protected HttpSession() {
         this.id = UUID.randomUUID();
         this.attributes = new HashMap<>();
         long time = System.currentTimeMillis();
@@ -57,6 +58,22 @@ public class HttpSession {
      */
     protected void setLastActivityTimestamp(long lastActivityTimestamp) {
         this.lastActivityTimestamp = lastActivityTimestamp;
+    }
+
+    /**
+     * Get the maximum amount of milliseconds a session can be alive
+     * @return int inactive milliseconds
+     */
+    public int getMaxInactiveInterval() {
+        return maxInactiveInterval;
+    }
+
+    /**
+     * Set the maximum amount of milliseconds a session can be alive
+     * @param maxInactiveInterval inactive milliseconds
+     */
+    public void setMaxInactiveInterval(int maxInactiveInterval) {
+        this.maxInactiveInterval = maxInactiveInterval;
     }
 
     /**

@@ -271,12 +271,11 @@ public class HttpServer {
      * @return created http session
      */
     protected HttpSession createSession(HttpConnection connection) {
-        int maxInactiveInterval = getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
         HttpSession session = new HttpSession();
+        session.setMaxInactiveInterval(getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL));
         sessions.put(session.getId(), session);
         if (getProperty(SESSION_USE_COOKIES_PROPERTY_NAME, DEFAULT_SESSION_USE_COOKIES)) {
             HttpCookie cookie = new HttpCookie(getProperty(SESSION_NAME_PROPERTY_NAME, DEFAULT_SESSION_NAME), session.getId().toString());
-            cookie.setMaxAge((int)Math.ceil(maxInactiveInterval / 1000));
             connection.getExchange().addCookie(cookie);
         }
         return session;
@@ -305,7 +304,7 @@ public class HttpServer {
             session = sessions.get(sessionId);
             if (session != null) {
                 long time = System.currentTimeMillis();
-                if ((time - session.getLastActivityTimestamp()) > getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL)) {
+                if ((time - session.getLastActivityTimestamp()) > session.getMaxInactiveInterval()) {
                     session = null;
                 }
                 else {
@@ -518,13 +517,12 @@ public class HttpServer {
         @Override
         public void run() {
             long time = System.currentTimeMillis();
-            int maxSessionInactiveInterval = getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
             synchronized (sessions) {
                 Iterator<Map.Entry<UUID, HttpSession>> iterator = sessions.entrySet().iterator();
                 while (iterator.hasNext()) {
                     Map.Entry<UUID, HttpSession> entry = iterator.next();
                     HttpSession session = entry.getValue();
-                    if ((time - session.getLastActivityTimestamp()) > maxSessionInactiveInterval) {
+                    if ((time - session.getLastActivityTimestamp()) > session.getMaxInactiveInterval()) {
                         iterator.remove();
                     }
                 }
