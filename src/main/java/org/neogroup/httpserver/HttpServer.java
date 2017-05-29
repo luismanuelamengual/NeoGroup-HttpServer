@@ -27,15 +27,20 @@ public class HttpServer {
     public static final String PORT_PROPERTY_NAME = "port";
     public static final String LOGGING_ENABLED_PROPERTY_NAME = "loggingEnabled";
     public static final String CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME = "connectionCheckoutInterval";
-    public static final String MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME = "maxIdleConnectionInterval";
+    public static final String CONNECTION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME = "connectionMaxInactiveInterval";
     public static final String SESSION_NAME_PROPERTY_NAME = "sessionName";
     public static final String SESSION_USE_COOKIES_PROPERTY_NAME = "sessionUseCookies";
     public static final String SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME = "sessionMaxInactiveInterval";
     public static final String SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME = "sessionCheckoutInterval";
 
-    public static final String DEFAULT_SERVER_NAME_VALUE = "NeoGroup-HttpServer";
+    public static final int DEFAULT_PORT = 80;
+    public static final boolean DEFAULT_LOGGING_ENABLED = false;
+    public static final int DEFAULT_CONNECTION_MAX_INACTIVE_INTERVAL = 5000;
+    public static final int DEFAULT_CONNECTION_CHECKOUT_INTERVAL = 20000;
+    public static final String DEFAULT_SERVER_NAME = "NeoGroup-HttpServer";
     public static final String DEFAULT_SESSION_NAME = "sessionId";
     public static final int DEFAULT_SESSION_MAX_INACTIVE_INTERVAL = 300000;
+    public static final int DEFAULT_SESSION_CHECKOUT_INTERVAL = 60000;
     public static final boolean DEFAULT_SESSION_USE_COOKIES = true;
 
     private static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
@@ -154,7 +159,7 @@ public class HttpServer {
      * @param arguments arguments
      */
     private void log (Level level, String message, Object ... arguments) {
-        if (logger != null && getProperty(LOGGING_ENABLED_PROPERTY_NAME, false)) {
+        if (logger != null && getProperty(LOGGING_ENABLED_PROPERTY_NAME, DEFAULT_LOGGING_ENABLED)) {
             logger.log(level, MessageFormat.format(message, arguments));
         }
     }
@@ -223,12 +228,12 @@ public class HttpServer {
         try {
             selector = Selector.open();
             serverChannel = ServerSocketChannel.open();
-            serverChannel.socket().bind(new InetSocketAddress(getProperty(PORT_PROPERTY_NAME, 80)));
+            serverChannel.socket().bind(new InetSocketAddress(getProperty(PORT_PROPERTY_NAME, DEFAULT_PORT)));
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            int connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, 10000);
-            int sessionCheckoutInterval = getProperty(SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
+            int connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, DEFAULT_CONNECTION_CHECKOUT_INTERVAL);
+            int sessionCheckoutInterval = getProperty(SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_CHECKOUT_INTERVAL);
             timer.scheduleAtFixedRate(new ConnectionsHandler(),connectionCheckoutInterval,connectionCheckoutInterval,TimeUnit.MILLISECONDS);
             timer.scheduleAtFixedRate(new SessionsHandler(),sessionCheckoutInterval,sessionCheckoutInterval,TimeUnit.MILLISECONDS);
 
@@ -409,7 +414,7 @@ public class HttpServer {
                     log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
 
                     //Add general response headers
-                    exchange.addResponseHeader(HttpHeader.SERVER, getProperty(SERVER_NAME_PROPERTY_NAME, DEFAULT_SERVER_NAME_VALUE));
+                    exchange.addResponseHeader(HttpHeader.SERVER, getProperty(SERVER_NAME_PROPERTY_NAME, DEFAULT_SERVER_NAME));
                     exchange.addResponseHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                     String connectionHeader = exchange.getRequestHeader(HttpHeader.CONNECTION);
                     if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
@@ -484,7 +489,7 @@ public class HttpServer {
         @Override
         public void run() {
             long time = System.currentTimeMillis();
-            int maxIdleConnectionInterval = getProperty(MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME, 5000);
+            int maxIdleConnectionInterval = getProperty(CONNECTION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_CONNECTION_MAX_INACTIVE_INTERVAL);
             synchronized (idleConnections) {
                 Iterator<HttpConnection> iterator = idleConnections.iterator();
                 while (iterator.hasNext()) {
