@@ -45,7 +45,7 @@ public class HttpServer {
 
     private static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
     private static final String CONNECTION_DESTROYED_MESSAGE = "Connection \"{0}\" destroyed !!";
-    private static final String CONNECTION_REQUEST_RECEIVED_MESSAGE = "Connection \"{0}\" recevied request \"{1}\"";
+    private static final String CONNECTION_REQUEST_RECEIVED_MESSAGE = "Connection \"{0}\" received request \"{1}\"";
 
     private static final Map<Long, HttpConnection> threadConnections;
     static {
@@ -304,7 +304,13 @@ public class HttpServer {
         if (sessionId != null) {
             session = sessions.get(sessionId);
             if (session != null) {
-                session.setLastActivityTimestamp(System.currentTimeMillis());
+                long time = System.currentTimeMillis();
+                if ((time - session.getLastActivityTimestamp()) > getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL)) {
+                    session = null;
+                }
+                else {
+                    session.setLastActivityTimestamp(System.currentTimeMillis());
+                }
             }
         }
         return session;

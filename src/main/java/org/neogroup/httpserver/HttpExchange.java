@@ -145,9 +145,6 @@ public class HttpExchange {
 
         //Get the session for the new request
         session = connection.getServer().getSession(connection);
-        if (session != null) {
-            session.setLastActivityTimestamp(System.currentTimeMillis());
-        }
     }
 
     /**
