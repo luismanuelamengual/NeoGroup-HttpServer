@@ -36,7 +36,7 @@ public class HttpServer {
     public static final int DEFAULT_PORT = 80;
     public static final boolean DEFAULT_LOGGING_ENABLED = false;
     public static final int DEFAULT_CONNECTION_MAX_INACTIVE_INTERVAL = 5000;
-    public static final int DEFAULT_CONNECTION_CHECKOUT_INTERVAL = 20000;
+    public static final int DEFAULT_CONNECTION_CHECKOUT_INTERVAL = 12000;
     public static final String DEFAULT_SERVER_NAME = "NeoGroup-HttpServer";
     public static final String DEFAULT_SESSION_NAME = "sessionId";
     public static final int DEFAULT_SESSION_MAX_INACTIVE_INTERVAL = 300000;
@@ -216,7 +216,7 @@ public class HttpServer {
      * Gets the current thread active connection
      * @return The connection for the current thread
      */
-    public static HttpConnection getCurrentThreadConnection () {
+    protected static HttpConnection getCurrentThreadConnection () {
         return threadConnections.get(Thread.currentThread().getId());
     }
 
