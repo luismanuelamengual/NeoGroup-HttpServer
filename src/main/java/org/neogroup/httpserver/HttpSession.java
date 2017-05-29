@@ -15,7 +15,6 @@ public class HttpSession {
     private final Map<String,Object> attributes;
     private long lastActivityTimestamp;
     private long creationTimestamp;
-    private int maxInactiveInterval;
 
     /**
      * Constructor for the http session
@@ -58,22 +57,6 @@ public class HttpSession {
      */
     protected void setLastActivityTimestamp(long lastActivityTimestamp) {
         this.lastActivityTimestamp = lastActivityTimestamp;
-    }
-
-    /**
-     * Get the maximum time interval for inactive session
-     * @return int max interval
-     */
-    public int getMaxInactiveInterval() {
-        return maxInactiveInterval;
-    }
-
-    /**
-     * Set the maximum time interval for inactive session
-     * @param maxInactiveInterval max interval
-     */
-    public void setMaxInactiveInterval(int maxInactiveInterval) {
-        this.maxInactiveInterval = maxInactiveInterval;
     }
 
     /**

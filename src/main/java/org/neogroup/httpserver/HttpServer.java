@@ -28,8 +28,15 @@ public class HttpServer {
     public static final String LOGGING_ENABLED_PROPERTY_NAME = "loggingEnabled";
     public static final String CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME = "connectionCheckoutInterval";
     public static final String MAX_IDLE_CONNECTION_INTERVAL_PROPERTY_NAME = "maxIdleConnectionInterval";
+    public static final String SESSION_NAME_PROPERTY_NAME = "sessionName";
+    public static final String SESSION_USE_COOKIES_PROPERTY_NAME = "sessionUseCookies";
+    public static final String SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME = "sessionMaxInactiveInterval";
+    public static final String SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME = "sessionCheckoutInterval";
 
-    public static final String SERVER_NAME_DEFAULT_VALUE = "NeoGroup-HttpServer";
+    public static final String DEFAULT_SERVER_NAME_VALUE = "NeoGroup-HttpServer";
+    public static final String DEFAULT_SESSION_NAME = "sessionId";
+    public static final int DEFAULT_SESSION_MAX_INACTIVE_INTERVAL = 300000;
+    public static final boolean DEFAULT_SESSION_USE_COOKIES = true;
 
     private static final String CONNECTION_CREATED_MESSAGE = "Connection \"{0}\" created !!";
     private static final String CONNECTION_DESTROYED_MESSAGE = "Connection \"{0}\" destroyed !!";
@@ -45,13 +52,13 @@ public class HttpServer {
     private Executor executor;
     private ServerHandler serverHandler;
     private ScheduledExecutorService timer;
-    private HttpSessionManager sessionManager;
     private Logger logger;
     private Properties properties;
     private boolean running;
     private final Set<HttpContext> contexts;
     private final Set<HttpConnection> idleConnections;
     private final Set<HttpConnection> readyConnections;
+    private Map<UUID, HttpSession> sessions;
 
     /**
      * Constructor for the http server
@@ -67,11 +74,11 @@ public class HttpServer {
             }
         };
         serverHandler = new ServerHandler();
-        sessionManager = new DefaultHttpSessionManager();
         timer = Executors.newSingleThreadScheduledExecutor();
         contexts = Collections.synchronizedSet(new HashSet<HttpContext>());
         idleConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
         readyConnections = Collections.synchronizedSet (new HashSet<HttpConnection>());
+        sessions = Collections.synchronizedMap(new HashMap<UUID, HttpSession>());
     }
 
     /**
@@ -153,22 +160,6 @@ public class HttpServer {
     }
 
     /**
-     * Get the session manager
-     * @return session manager
-     */
-    public HttpSessionManager getSessionManager() {
-        return sessionManager;
-    }
-
-    /**
-     * Set the session manager
-     * @param sessionManager session manager
-     */
-    public void setSessionManager(HttpSessionManager sessionManager) {
-        this.sessionManager = sessionManager;
-    }
-
-    /**
      * Retrieves the thread executor for the http server
      * @return Thread executor
      */
@@ -236,8 +227,10 @@ public class HttpServer {
             serverChannel.configureBlocking(false);
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            long connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, 10000);
-            timer.scheduleAtFixedRate(new ConnectionsHandler(),connectionCheckoutInterval,connectionCheckoutInterval, TimeUnit.MILLISECONDS);
+            int connectionCheckoutInterval = getProperty(CONNECTION_CHECKOUT_INTERVAL_PROPERTY_NAME, 10000);
+            int sessionCheckoutInterval = getProperty(SESSION_CHECKOUT_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
+            timer.scheduleAtFixedRate(new ConnectionsHandler(),connectionCheckoutInterval,connectionCheckoutInterval,TimeUnit.MILLISECONDS);
+            timer.scheduleAtFixedRate(new SessionsHandler(),sessionCheckoutInterval,sessionCheckoutInterval,TimeUnit.MILLISECONDS);
 
         } catch (Exception ex) {
             throw new HttpException("Error creating server socket", ex);
@@ -265,6 +258,74 @@ public class HttpServer {
         timer.shutdownNow();
         selector = null;
         serverChannel = null;
+    }
+
+    /**
+     * Creates a session for the given connection
+     * @param connection connection
+     * @return created http session
+     */
+    protected HttpSession createSession(HttpConnection connection) {
+        int maxInactiveInterval = getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
+        HttpSession session = new HttpSession();
+        sessions.put(session.getId(), session);
+        if (getProperty(SESSION_USE_COOKIES_PROPERTY_NAME, DEFAULT_SESSION_USE_COOKIES)) {
+            HttpCookie cookie = new HttpCookie(getProperty(SESSION_NAME_PROPERTY_NAME, DEFAULT_SESSION_NAME), session.getId().toString());
+            cookie.setMaxAge(maxInactiveInterval);
+            connection.getExchange().addCookie(cookie);
+        }
+        return session;
+    }
+
+    /**
+     * Destroys the session for the given connection
+     * @param session session to destroy
+     * @return destroyed http session
+     */
+    protected HttpSession destroySession(HttpSession session) {
+        session.clearAttributes();
+        sessions.remove(session.getId());
+        return session;
+    }
+
+    /**
+     * Get a session from the given connection
+     * @param connection connection
+     * @return http session
+     */
+    protected HttpSession getSession(HttpConnection connection) {
+        HttpSession session = null;
+        UUID sessionId = getSessionId(connection);
+        if (sessionId != null) {
+            session = sessions.get(sessionId);
+            if (session != null) {
+                session.setLastActivityTimestamp(System.currentTimeMillis());
+            }
+        }
+        return session;
+    }
+
+    /**
+     * Obtains the session id from the connection
+     * @param connection connection
+     * @return id of session
+     */
+    protected UUID getSessionId (HttpConnection connection) {
+        UUID sessionId = null;
+        String sessionName = getProperty(SESSION_NAME_PROPERTY_NAME, DEFAULT_SESSION_NAME);
+        if (getProperty(SESSION_USE_COOKIES_PROPERTY_NAME, DEFAULT_SESSION_USE_COOKIES)) {
+            HttpCookie sessionCookie = connection.getExchange().getCookie(sessionName);
+            if (sessionCookie != null && !sessionCookie.getValue().isEmpty()) {
+                sessionId = UUID.fromString(sessionCookie.getValue());
+            }
+        }
+        else {
+            String sessionIdString = connection.getExchange().getRequestParameter(sessionName);
+            if (sessionIdString != null && !sessionIdString.isEmpty()) {
+                sessionId = UUID.fromString(sessionIdString);
+            }
+        }
+        return sessionId;
     }
 
     /**
@@ -348,7 +409,7 @@ public class HttpServer {
                     log(Level.FINE, CONNECTION_REQUEST_RECEIVED_MESSAGE, connection, exchange.getRequestPath());
 
                     //Add general response headers
-                    exchange.addResponseHeader(HttpHeader.SERVER, getProperty(SERVER_NAME_PROPERTY_NAME, SERVER_NAME_DEFAULT_VALUE));
+                    exchange.addResponseHeader(HttpHeader.SERVER, getProperty(SERVER_NAME_PROPERTY_NAME, DEFAULT_SERVER_NAME_VALUE));
                     exchange.addResponseHeader(HttpHeader.DATE, HttpServerUtils.formatDate(new Date()));
                     String connectionHeader = exchange.getRequestHeader(HttpHeader.CONNECTION);
                     if (connectionHeader == null || connectionHeader.equals(HttpHeader.KEEP_ALIVE)) {
@@ -432,6 +493,28 @@ public class HttpServer {
                         connection.close();
                         iterator.remove();
                         log(Level.FINE, CONNECTION_DESTROYED_MESSAGE, connection);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Handler that manages inactive sessions
+     * Removes all session that are inactive
+     */
+    private class SessionsHandler implements Runnable {
+        @Override
+        public void run() {
+            long time = System.currentTimeMillis();
+            int maxSessionInactiveInterval = getProperty(SESSION_MAX_INACTIVE_INTERVAL_PROPERTY_NAME, DEFAULT_SESSION_MAX_INACTIVE_INTERVAL);
+            synchronized (sessions) {
+                Iterator<Map.Entry<UUID, HttpSession>> iterator = sessions.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<UUID, HttpSession> entry = iterator.next();
+                    HttpSession session = entry.getValue();
+                    if ((time - session.getLastActivityTimestamp()) > maxSessionInactiveInterval) {
+                        iterator.remove();
                     }
                 }
             }

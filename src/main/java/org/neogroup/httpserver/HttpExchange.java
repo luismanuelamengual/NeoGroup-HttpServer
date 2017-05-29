@@ -144,12 +144,9 @@ public class HttpExchange {
         }
 
         //Get the session for the new request
-        HttpSessionManager sessionManager = connection.getServer().getSessionManager();
-        if (sessionManager != null) {
-            session = sessionManager.getSession(connection);
-            if (session != null) {
-                session.setLastActivityTimestamp(System.currentTimeMillis());
-            }
+        session = connection.getServer().getSession(connection);
+        if (session != null) {
+            session.setLastActivityTimestamp(System.currentTimeMillis());
         }
     }
 
@@ -547,11 +544,7 @@ public class HttpExchange {
      * @return http session
      */
     public HttpSession createSession() {
-        session = null;
-        HttpSessionManager sessionManager = connection.getServer().getSessionManager();
-        if (sessionManager != null) {
-            session = sessionManager.createSession(connection);
-        }
+        session = connection.getServer().createSession(connection);
         return session;
     }
 
@@ -560,13 +553,7 @@ public class HttpExchange {
      * @return http session
      */
     public HttpSession destroySession() {
-        HttpSession destroyedSession = null;
-        if (session != null) {
-            HttpSessionManager sessionManager = connection.getServer().getSessionManager();
-            if (sessionManager != null) {
-                destroyedSession = sessionManager.destroySession(connection, session);
-            }
-        }
+        HttpSession destroyedSession = connection.getServer().destroySession(session);
         session = null;
         return destroyedSession;
     }
