@@ -26,7 +26,7 @@ public class Main {
                 session.setAttribute("name", "Luis");
 
                 HttpResponse response = new HttpResponse();
-                response.write("Session created !!");
+                response.write("Session created with id \"" + session.getId() + "\" !!");
                 return response;
             }
         });
