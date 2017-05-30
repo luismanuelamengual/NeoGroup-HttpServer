@@ -25,7 +25,7 @@ public class HttpServerUtils {
     /**
      * Formats a date with the server format
      * @param date date to format
-     * @return
+     * @return string date
      */
     public static final String formatDate (Date date) {
         return dateFormatter.format(date);

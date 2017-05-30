@@ -30,7 +30,7 @@ public abstract class HttpContext {
     /**
      * Method that is execute when accesing the context path
      * @param request Http request
-     * @return
+     * @return http response
      */
     public abstract HttpResponse onContext (HttpRequest request);
 }
