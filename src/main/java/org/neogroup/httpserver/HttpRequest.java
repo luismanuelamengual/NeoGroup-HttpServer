@@ -66,7 +66,7 @@ public class HttpRequest {
      * Retrieve the path parts
      * @return array of path parts
      */
-    public List<String> getRequestPathParts() {
+    public List<String> getPathParts() {
         return exchange.getRequestPathParts();
     }
 
