@@ -12,7 +12,6 @@ import java.util.*;
  */
 public class HttpResponse {
 
-    private final HttpConnection connection;
     private final HttpExchange exchange;
 
     /**
@@ -27,7 +26,6 @@ public class HttpResponse {
      * @param connection Http connection
      */
     protected HttpResponse(HttpConnection connection) {
-        this.connection = connection;
         this.exchange = connection.getExchange();
     }
 

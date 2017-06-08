@@ -11,7 +11,6 @@ import java.util.Map;
  */
 public class HttpRequest {
 
-    private final HttpConnection connection;
     private final HttpExchange exchange;
 
     /**
@@ -26,7 +25,6 @@ public class HttpRequest {
      * @param connection
      */
     protected HttpRequest (HttpConnection connection) {
-        this.connection = connection;
         this.exchange = connection.getExchange();
     }
 
