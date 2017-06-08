@@ -142,9 +142,6 @@ public class HttpExchange {
         else {
             throw new HttpBadRequestException("Empty request !!");
         }
-
-        //Get the session for the new request
-        session = connection.getServer().getSession(connection);
     }
 
     /**
@@ -533,26 +530,27 @@ public class HttpExchange {
      * @return http session
      */
     public HttpSession getSession() {
-        return session;
+        return getSession(false);
     }
 
     /**
-     * Creates a new session
+     * Get the current session associated with the exchange
+     * @param create boolean that indicates if the session must be created
      * @return http session
      */
-    public HttpSession createSession() {
-        session = connection.getServer().createSession(connection);
+    public HttpSession getSession(boolean create) {
+        if (create) {
+            session = connection.getServer().createSession(connection);
+        }
+        else {
+            if (session == null) {
+                session = connection.getServer().getSession(connection);
+                if (session == null) {
+                    session = connection.getServer().createSession(connection);
+                }
+            }
+        }
         return session;
-    }
-
-    /**
-     * Destroys the current session
-     * @return http session
-     */
-    public HttpSession destroySession() {
-        HttpSession destroyedSession = connection.getServer().destroySession(session);
-        session = null;
-        return destroyedSession;
     }
 
     /**

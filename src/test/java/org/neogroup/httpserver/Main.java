@@ -22,7 +22,7 @@ public class Main {
             @Override
             public HttpResponse onContext(HttpRequest request) {
 
-                HttpSession session = request.createSession();
+                HttpSession session = request.getSession();
                 session.setAttribute("name", "Luis");
 
                 HttpResponse response = new HttpResponse();
@@ -51,8 +51,7 @@ public class Main {
             @Override
             public HttpResponse onContext(HttpRequest request) {
 
-                request.destroySession();
-
+                request.getSession().invalidate();
                 HttpResponse response = new HttpResponse();
                 response.write("Session destroyed !!");
                 return response;

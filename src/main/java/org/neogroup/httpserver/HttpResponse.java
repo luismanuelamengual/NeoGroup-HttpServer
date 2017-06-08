@@ -150,4 +150,21 @@ public class HttpResponse {
     public void addCookie(HttpCookie cookie) {
         exchange.addCookie(cookie);
     }
+
+    /**
+     * Retrieve the cookies of a request
+     * @return list of cookies
+     */
+    public Collection<HttpCookie> getCookies() {
+        return exchange.getCookies();
+    }
+
+    /**
+     * Obtain a cookie by its name
+     * @param cookieName name of cookie
+     * @return http cookie
+     */
+    public HttpCookie getCookie(String cookieName) {
+        return exchange.getCookie(cookieName);
+    }
 }

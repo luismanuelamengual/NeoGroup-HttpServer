@@ -13,6 +13,8 @@ public class HttpSession {
 
     private final UUID id;
     private final Map<String,Object> attributes;
+    private boolean valid;
+    private boolean isNew;
     private long lastActivityTimestamp;
     private long creationTimestamp;
     private int maxInactiveInterval;
@@ -26,6 +28,8 @@ public class HttpSession {
         long time = System.currentTimeMillis();
         creationTimestamp = time;
         lastActivityTimestamp = time;
+        valid = false;
+        isNew = true;
     }
 
     /**
@@ -54,10 +58,10 @@ public class HttpSession {
 
     /**
      * Set the session last activity timestamp
-     * @param lastActivityTimestamp timestamp
      */
-    protected void setLastActivityTimestamp(long lastActivityTimestamp) {
-        this.lastActivityTimestamp = lastActivityTimestamp;
+    protected void checkSession() {
+        this.lastActivityTimestamp = System.currentTimeMillis();
+        this.isNew = false;
     }
 
     /**
@@ -117,5 +121,29 @@ public class HttpSession {
      */
     public Set<String> getAttributeNames () {
         return attributes.keySet();
+    }
+
+    /**
+     * Indicates if the session was created or not
+     * @return boolean
+     */
+    public boolean isNew() {
+        return isNew;
+    }
+
+    /**
+     * Checks if the session is still valid
+     * @return boolean
+     */
+    public boolean isValid() {
+        return valid;
+    }
+
+    /**
+     * Invalidates the session so its not valid any more
+     */
+    public void invalidate () {
+        valid = false;
+        clearAttributes();
     }
 }

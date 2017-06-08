@@ -171,18 +171,11 @@ public class HttpRequest {
     }
 
     /**
-     * Creates a new session
+     * Get the current session associated with the exchange
+     * @param create boolean that indicates if the session must be created
      * @return http session
      */
-    public HttpSession createSession() {
-        return exchange.createSession();
-    }
-
-    /**
-     * Destroys the current session
-     * @return http session
-     */
-    public HttpSession destroySession() {
-        return exchange.destroySession();
+    public HttpSession getSession(boolean create) {
+        return exchange.getSession(create);
     }
 }

@@ -283,17 +283,6 @@ public class HttpServer {
     }
 
     /**
-     * Destroys the session for the given connection
-     * @param session session to destroy
-     * @return destroyed http session
-     */
-    protected HttpSession destroySession(HttpSession session) {
-        session.clearAttributes();
-        sessions.remove(session.getId());
-        return session;
-    }
-
-    /**
      * Get a session from the given connection
      * @param connection connection
      * @return http session
@@ -303,13 +292,13 @@ public class HttpServer {
         UUID sessionId = getSessionId(connection);
         if (sessionId != null) {
             session = sessions.get(sessionId);
-            if (session != null) {
+            if (session != null && session.isValid()) {
                 long time = System.currentTimeMillis();
                 if ((time - session.getLastActivityTimestamp()) > session.getMaxInactiveInterval()) {
                     session = null;
                 }
                 else {
-                    session.setLastActivityTimestamp(System.currentTimeMillis());
+                    session.checkSession();
                 }
             }
         }
@@ -523,7 +512,7 @@ public class HttpServer {
                 while (iterator.hasNext()) {
                     Map.Entry<UUID, HttpSession> entry = iterator.next();
                     HttpSession session = entry.getValue();
-                    if ((time - session.getLastActivityTimestamp()) > session.getMaxInactiveInterval()) {
+                    if (!session.isValid() || (time - session.getLastActivityTimestamp()) > session.getMaxInactiveInterval()) {
                         iterator.remove();
                     }
                 }
