@@ -300,6 +300,15 @@ public class HttpExchange {
     }
 
     /**
+     * Sets a request parameter
+     * @param name name of the parameter
+     * @param value value of the parameter
+     */
+    public void setRequestParameter (String name, String value) {
+        getRequestParameters().put(name, value);
+    }
+
+    /**
      * Indicates if a parameter exists or not
      * @param name name of the parameter to check
      * @return boolean

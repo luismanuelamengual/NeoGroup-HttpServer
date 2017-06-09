@@ -137,6 +137,15 @@ public class HttpRequest {
     }
 
     /**
+     * Sets a request parameter
+     * @param name name of the parameter
+     * @param value value of the parameter
+     */
+    public void setParameter(String name, String value) {
+        exchange.setRequestParameter(name, value);
+    }
+
+    /**
      * Indicates if a parameter exists or not
      * @param name name of the parameter to check
      * @return boolean
