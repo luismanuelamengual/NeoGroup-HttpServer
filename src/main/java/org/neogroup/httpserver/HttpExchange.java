@@ -30,7 +30,7 @@ public class HttpExchange {
     private HttpSession session;
     private Map<String, HttpCookie> cookies;
 
-    private String requestMethod;
+    private HttpMethod requestMethod;
     private URI requestUri;
     private String requestVersion;
     private Map<String, List<String>> requestHeaders;
@@ -152,7 +152,7 @@ public class HttpExchange {
     private void processStatusLine (String statusLine) throws Exception {
 
         String[] parts = statusLine.split(STATUS_LINE_FIELD_SEPARATOR);
-        requestMethod = parts[0];
+        requestMethod = HttpMethod.valueOf(parts[0]);
         requestUri = new URI(parts[1]);
         requestVersion = parts[2];
     }
@@ -179,7 +179,7 @@ public class HttpExchange {
      * Retrieves the requestMethod of the request
      * @return requestMethod
      */
-    public String getRequestMethod() {
+    public HttpMethod getRequestMethod() {
         return requestMethod;
     }
 

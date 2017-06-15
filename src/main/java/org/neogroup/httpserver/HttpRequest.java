@@ -32,7 +32,7 @@ public class HttpRequest {
      * Retrieves the method of the request
      * @return request Method
      */
-    public String getMethod() {
+    public HttpMethod getMethod() {
         return exchange.getRequestMethod();
     }
 
